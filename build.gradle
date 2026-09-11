@@ -10,9 +10,6 @@ repositories {
 }
 
 dependencies {
-    // 임시 로그인
-    implementation 'org.mindrot:jbcrypt:0.4'
-
     // Source: https://mvnrepository.com/artifact/com.zaxxer/HikariCP
     implementation group: 'com.zaxxer', name: 'HikariCP', version: '5.1.0'
 
@@ -25,9 +22,6 @@ dependencies {
 
     // Source: https://mvnrepository.com/artifact/com.mysql/mysql-connector-j
     implementation group: 'com.mysql', name: 'mysql-connector-j', version: '8.4.0'
-
-    // Source: https://mvnrepository.com/artifact/org.mindrot/jbcrypt
-    implementation group: 'org.mindrot', name: 'jbcrypt', version: '0.4'
 
     testImplementation platform('org.junit:junit-bom:6.0.0')
     testImplementation 'org.junit.jupiter:junit-jupiter'
