@@ -14,7 +14,7 @@ import java.sql.SQLException;
 public final class DatabaseUtil {
 
     private static final String URL = "jdbc:mysql://%s:3306/study_room_reservation?serverTimezone=Asia/Seoul";
-    private static final String host = System.getenv("DB_HOST_STUDY_ROOM_RESERVATION");
+    private static final String DB_HOST_ENV = "DB_HOST_STUDY_ROOM_RESERVATION";
     private static final String DB_USER_ENV = "DB_USER_STUDY_ROOM_RESERVATION";
     private static final String DB_PASSWORD_ENV = "DB_PASSWORD_STUDY_ROOM_RESERVATION";
 
@@ -25,9 +25,12 @@ public final class DatabaseUtil {
         HikariConfig config = new HikariConfig();
 
         // 데이터베이스 접속 정보는 소스 코드에 비밀번호를 남기지 않도록 환경변수에서 읽습니다.
+        String host = requireEnvironmentVariable(DB_HOST_ENV).strip();
+        String username = requireEnvironmentVariable(DB_USER_ENV).strip();
         String jdbcUrl = String.format(URL, host);
+
         config.setJdbcUrl(jdbcUrl);
-        config.setUsername(requireEnvironmentVariable(DB_USER_ENV));
+        config.setUsername(username);
         config.setPassword(requireEnvironmentVariable(DB_PASSWORD_ENV));
 
         // 소규모 팀 프로젝트를 기준으로 최대 연결 수와 최소 대기 연결 수를 설정합니다.
