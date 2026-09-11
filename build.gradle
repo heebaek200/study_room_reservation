@@ -1,0 +1,33 @@
+plugins {
+    id 'java'
+}
+
+group = 'com.studyroom'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Source: https://mvnrepository.com/artifact/com.zaxxer/HikariCP
+    implementation group: 'com.zaxxer', name: 'HikariCP', version: '5.1.0'
+
+    // Source: https://mvnrepository.com/artifact/org.slf4j/slf4j-api
+    implementation group: 'org.slf4j', name: 'slf4j-api', version: '2.0.17'
+    implementation group: 'org.slf4j', name: 'slf4j-simple', version: '2.0.17'
+
+    // Source: https://mvnrepository.com/artifact/org.projectlombok/lombok
+    implementation group: 'org.projectlombok', name: 'lombok', version: '1.18.46'
+
+    // Source: https://mvnrepository.com/artifact/com.mysql/mysql-connector-j
+    implementation group: 'com.mysql', name: 'mysql-connector-j', version: '8.4.0'
+
+    testImplementation platform('org.junit:junit-bom:6.0.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
+}
