@@ -1,0 +1,492 @@
+diff --git a/build.gradle b/build.gradle
+index 012601e..4f78c73 100644
+--- a/build.gradle
++++ b/build.gradle
+@@ -23,6 +23,9 @@ dependencies {
+     // Source: https://mvnrepository.com/artifact/com.mysql/mysql-connector-j
+     implementation group: 'com.mysql', name: 'mysql-connector-j', version: '8.4.0'
+ 
++    // Source: https://mvnrepository.com/artifact/org.mindrot/jbcrypt
++    implementation group: 'org.mindrot', name: 'jbcrypt', version: '0.4'
++
+     testImplementation platform('org.junit:junit-bom:6.0.0')
+     testImplementation 'org.junit.jupiter:junit-jupiter'
+     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+@@ -30,4 +33,4 @@ dependencies {
+ 
+ test {
+     useJUnitPlatform()
+-}
+\ No newline at end of file
++}
+diff --git a/src/main/java/com/studyroom/reservation/enums/UserRole.java b/src/main/java/com/studyroom/reservation/enums/UserRole.java
+index e168da6..fe9c352 100644
+--- a/src/main/java/com/studyroom/reservation/enums/UserRole.java
++++ b/src/main/java/com/studyroom/reservation/enums/UserRole.java
+@@ -1,4 +1,6 @@
+ package com.studyroom.reservation.enums;
+ 
+ public enum UserRole {
++    USER,
++    ADMIN
+ }
+diff --git a/src/main/java/com/studyroom/reservation/enums/UserStatus.java b/src/main/java/com/studyroom/reservation/enums/UserStatus.java
+index 4f7d221..dcc62d2 100644
+--- a/src/main/java/com/studyroom/reservation/enums/UserStatus.java
++++ b/src/main/java/com/studyroom/reservation/enums/UserStatus.java
+@@ -1,4 +1,6 @@
+ package com.studyroom.reservation.enums;
+ 
+ public enum UserStatus {
++    ACTIVE,
++    WITHDRAWN
+ }
+diff --git a/src/main/java/com/studyroom/reservation/service/AuthService.java b/src/main/java/com/studyroom/reservation/service/AuthService.java
+index a577f28..2f7abba 100644
+--- a/src/main/java/com/studyroom/reservation/service/AuthService.java
++++ b/src/main/java/com/studyroom/reservation/service/AuthService.java
+@@ -1,4 +1,17 @@
+ package com.studyroom.reservation.service;
+ 
+-public class AuthService {
++import com.studyroom.reservation.session.LoginSession;
++
++/**
++ * 임시 메모리 구현과 정식 JDBC 구현이 공통으로 지켜야 할 인증 계약입니다.
++ */
++public interface AuthService {
++
++    void signUp(String email, String rawPassword, String name);
++
++    LoginSession login(String email, String rawPassword);
++
++    void logout(String sessionId);
++
++    LoginSession requireLogin(String sessionId);
+ }
+diff --git a/src/main/java/com/studyroom/reservation/service/InMemoryAuthService.java b/src/main/java/com/studyroom/reservation/service/InMemoryAuthService.java
+new file mode 100644
+index 0000000..869f754
+--- /dev/null
++++ b/src/main/java/com/studyroom/reservation/service/InMemoryAuthService.java
+@@ -0,0 +1,155 @@
++package com.studyroom.reservation.service;
++
++import com.studyroom.reservation.enums.UserRole;
++import com.studyroom.reservation.enums.UserStatus;
++import com.studyroom.reservation.exception.BusinessException;
++import com.studyroom.reservation.session.LoginSession;
++import com.studyroom.reservation.session.SessionManager;
++import com.studyroom.reservation.util.PasswordUtil;
++
++import java.util.Locale;
++import java.util.Map;
++import java.util.concurrent.ConcurrentHashMap;
++import java.util.concurrent.atomic.AtomicLong;
++
++/**
++ * Issue #5와 #6을 먼저 개발하기 위한 임시 인증 구현체입니다.
++ * 회원 데이터는 메모리에 저장되며 애플리케이션 종료 시 사라집니다.
++ */
++public final class InMemoryAuthService implements AuthService {
++
++    private static final String LOGIN_FAILURE_MESSAGE =
++            "이메일 또는 비밀번호가 올바르지 않습니다.";
++
++    private final AtomicLong userIdSequence = new AtomicLong(121L);
++    private final Map<String, TemporaryUser> usersByEmail =
++            new ConcurrentHashMap<>();
++    private final SessionManager sessionManager = new SessionManager();
++
++    public InMemoryAuthService() {
++        addDevelopmentUser(
++                1L,
++                "admin01@studyroom.test",
++                "password",
++                UserRole.ADMIN,
++                UserStatus.ACTIVE
++        );
++        addDevelopmentUser(
++                4L,
++                "user004@studyroom.test",
++                "password",
++                UserRole.USER,
++                UserStatus.ACTIVE
++        );
++        addDevelopmentUser(
++                111L,
++                "user111@studyroom.test",
++                "password",
++                UserRole.USER,
++                UserStatus.WITHDRAWN
++        );
++    }
++
++    @Override
++    public void signUp(String email, String rawPassword, String name) {
++        String normalizedEmail = normalizeEmail(email);
++        requireNotBlank(rawPassword, "비밀번호");
++        requireNotBlank(name, "이름");
++
++        TemporaryUser newUser = new TemporaryUser(
++                userIdSequence.getAndIncrement(),
++                normalizedEmail,
++                PasswordUtil.hash(rawPassword),
++                UserRole.USER,
++                UserStatus.ACTIVE
++        );
++
++        TemporaryUser existingUser = usersByEmail.putIfAbsent(
++                normalizedEmail,
++                newUser
++        );
++
++        if (existingUser != null) {
++            throw new BusinessException("이미 사용 중인 이메일입니다.");
++        }
++    }
++
++    @Override
++    public LoginSession login(String email, String rawPassword) {
++        String normalizedEmail = normalizeEmail(email);
++        requireNotBlank(rawPassword, "비밀번호");
++
++        TemporaryUser user = usersByEmail.get(normalizedEmail);
++
++        if (user == null
++                || user.status != UserStatus.ACTIVE
++                || !PasswordUtil.matches(rawPassword, user.passwordHash)) {
++            throw new BusinessException(LOGIN_FAILURE_MESSAGE);
++        }
++
++        return sessionManager.createSession(user.userId, user.role);
++    }
++
++    @Override
++    public void logout(String sessionId) {
++        sessionManager.removeSession(sessionId);
++    }
++
++    @Override
++    public LoginSession requireLogin(String sessionId) {
++        return sessionManager.requireSession(sessionId);
++    }
++
++    private void addDevelopmentUser(
++            long userId,
++            String email,
++            String rawPassword,
++            UserRole role,
++            UserStatus status
++    ) {
++        String normalizedEmail = normalizeEmail(email);
++        TemporaryUser user = new TemporaryUser(
++                userId,
++                normalizedEmail,
++                PasswordUtil.hash(rawPassword),
++                role,
++                status
++        );
++
++        usersByEmail.put(normalizedEmail, user);
++    }
++
++    private String normalizeEmail(String email) {
++        requireNotBlank(email, "이메일");
++        return email.strip().toLowerCase(Locale.ROOT);
++    }
++
++    private void requireNotBlank(String value, String fieldName) {
++        if (value == null || value.isBlank()) {
++            throw new BusinessException(fieldName + "을(를) 입력해 주세요.");
++        }
++    }
++
++    private static final class TemporaryUser {
++
++        private final long userId;
++        private final String email;
++        private final String passwordHash;
++        private final UserRole role;
++        private final UserStatus status;
++
++        private TemporaryUser(
++                long userId,
++                String email,
++                String passwordHash,
++                UserRole role,
++                UserStatus status
++        ) {
++            this.userId = userId;
++            this.email = email;
++            this.passwordHash = passwordHash;
++            this.role = role;
++            this.status = status;
++        }
++    }
++}
+diff --git a/src/main/java/com/studyroom/reservation/session/LoginSession.java b/src/main/java/com/studyroom/reservation/session/LoginSession.java
+index 327e4a7..d22d793 100644
+--- a/src/main/java/com/studyroom/reservation/session/LoginSession.java
++++ b/src/main/java/com/studyroom/reservation/session/LoginSession.java
+@@ -1,4 +1,32 @@
+ package com.studyroom.reservation.session;
+ 
+-public class LoginSession {
++import com.studyroom.reservation.enums.UserRole;
++
++/**
++ * 로그인 후 다른 기능에서 사용할 최소 인증 정보입니다.
++ * 비밀번호와 비밀번호 해시는 세션에 저장하지 않습니다.
++ */
++public final class LoginSession {
++
++    private final String sessionId;
++    private final long userId;
++    private final UserRole role;
++
++    public LoginSession(String sessionId, long userId, UserRole role) {
++        this.sessionId = sessionId;
++        this.userId = userId;
++        this.role = role;
++    }
++
++    public String getSessionId() {
++        return sessionId;
++    }
++
++    public long getUserId() {
++        return userId;
++    }
++
++    public UserRole getRole() {
++        return role;
++    }
+ }
+diff --git a/src/main/java/com/studyroom/reservation/session/SessionManager.java b/src/main/java/com/studyroom/reservation/session/SessionManager.java
+index b78192c..df48cd9 100644
+--- a/src/main/java/com/studyroom/reservation/session/SessionManager.java
++++ b/src/main/java/com/studyroom/reservation/session/SessionManager.java
+@@ -1,4 +1,47 @@
+ package com.studyroom.reservation.session;
+ 
+-public class SessionManager {
++import com.studyroom.reservation.enums.UserRole;
++import com.studyroom.reservation.exception.BusinessException;
++
++import java.util.Map;
++import java.util.UUID;
++import java.util.concurrent.ConcurrentHashMap;
++
++/**
++ * 로그인 세션을 메모리에서 관리합니다.
++ */
++public final class SessionManager {
++
++    private final Map<String, LoginSession> sessions = new ConcurrentHashMap<>();
++
++    public LoginSession createSession(long userId, UserRole role) {
++        String sessionId = UUID.randomUUID().toString();
++        LoginSession session = new LoginSession(sessionId, userId, role);
++
++        sessions.put(sessionId, session);
++
++        return session;
++    }
++
++    public LoginSession requireSession(String sessionId) {
++        if (sessionId == null || sessionId.isBlank()) {
++            throw new BusinessException("로그인이 필요합니다.");
++        }
++
++        LoginSession session = sessions.get(sessionId);
++
++        if (session == null) {
++            throw new BusinessException("로그인이 필요합니다.");
++        }
++
++        return session;
++    }
++
++    public void removeSession(String sessionId) {
++        if (sessionId == null || sessionId.isBlank()) {
++            return;
++        }
++
++        sessions.remove(sessionId);
++    }
+ }
+diff --git a/src/main/java/com/studyroom/reservation/util/DatabaseUtil.java b/src/main/java/com/studyroom/reservation/util/DatabaseUtil.java
+index 29feadc..2d9e3b1 100644
+--- a/src/main/java/com/studyroom/reservation/util/DatabaseUtil.java
++++ b/src/main/java/com/studyroom/reservation/util/DatabaseUtil.java
+@@ -14,7 +14,7 @@ import java.sql.SQLException;
+ public final class DatabaseUtil {
+ 
+     private static final String URL = "jdbc:mysql://%s:3306/study_room_reservation?serverTimezone=Asia/Seoul";
+-    private static final String host = System.getenv("DB_HOST_STUDY_ROOM_RESERVATION");
++    private static final String DB_HOST_ENV = "DB_HOST_STUDY_ROOM_RESERVATION";
+     private static final String DB_USER_ENV = "DB_USER_STUDY_ROOM_RESERVATION";
+     private static final String DB_PASSWORD_ENV = "DB_PASSWORD_STUDY_ROOM_RESERVATION";
+ 
+@@ -25,9 +25,12 @@ public final class DatabaseUtil {
+         HikariConfig config = new HikariConfig();
+ 
+         // 데이터베이스 접속 정보는 소스 코드에 비밀번호를 남기지 않도록 환경변수에서 읽습니다.
++        String host = requireEnvironmentVariable(DB_HOST_ENV).strip();
++        String username = requireEnvironmentVariable(DB_USER_ENV).strip();
+         String jdbcUrl = String.format(URL, host);
++
+         config.setJdbcUrl(jdbcUrl);
+-        config.setUsername(requireEnvironmentVariable(DB_USER_ENV));
++        config.setUsername(username);
+         config.setPassword(requireEnvironmentVariable(DB_PASSWORD_ENV));
+ 
+         // 소규모 팀 프로젝트를 기준으로 최대 연결 수와 최소 대기 연결 수를 설정합니다.
+diff --git a/src/main/java/com/studyroom/reservation/util/PasswordUtil.java b/src/main/java/com/studyroom/reservation/util/PasswordUtil.java
+index b37c2ea..4343c78 100644
+--- a/src/main/java/com/studyroom/reservation/util/PasswordUtil.java
++++ b/src/main/java/com/studyroom/reservation/util/PasswordUtil.java
+@@ -1,4 +1,26 @@
+ package com.studyroom.reservation.util;
+ 
+-public class PasswordUtil {
++import com.studyroom.reservation.exception.BusinessException;
++import org.mindrot.jbcrypt.BCrypt;
++
++public final class PasswordUtil {
++
++    private PasswordUtil() {
++    }
++
++    public static String hash(String rawPassword) {
++        if (rawPassword == null || rawPassword.isBlank()) {
++            throw new BusinessException("비밀번호를 입력해 주세요.");
++        }
++
++        return BCrypt.hashpw(rawPassword, BCrypt.gensalt());
++    }
++
++    public static boolean matches(String rawPassword, String passwordHash) {
++        if (rawPassword == null || passwordHash == null) {
++            return false;
++        }
++
++        return BCrypt.checkpw(rawPassword, passwordHash);
++    }
+ }
+diff --git a/src/test/java/com/studyroom/reservation/AuthTestMain.java b/src/test/java/com/studyroom/reservation/AuthTestMain.java
+new file mode 100644
+index 0000000..d252bb8
+--- /dev/null
++++ b/src/test/java/com/studyroom/reservation/AuthTestMain.java
+@@ -0,0 +1,38 @@
++package com.studyroom.reservation;
++
++import com.studyroom.reservation.service.AuthService;
++import com.studyroom.reservation.service.InMemoryAuthService;
++import com.studyroom.reservation.session.LoginSession;
++
++/**
++ * Issue #5와 #6 개발자가 임시 로그인 정보를 확인할 때 실행합니다.
++ */
++public class AuthTestMain {
++
++    public static void main(String[] args) {
++        AuthService authService = new InMemoryAuthService();
++
++        LoginSession userSession = authService.login(
++                "user004@studyroom.test",
++                "password"
++        );
++        printSession("회원", userSession);
++
++        LoginSession adminSession = authService.login(
++                "admin01@studyroom.test",
++                "password"
++        );
++        printSession("관리자", adminSession);
++
++        authService.logout(userSession.getSessionId());
++
++        System.out.println("회원 로그아웃 완료");
++    }
++
++    private static void printSession(String label, LoginSession session) {
++        System.out.println("===== " + label + " 로그인 =====");
++        System.out.println("sessionId: " + session.getSessionId());
++        System.out.println("userId: " + session.getUserId());
++        System.out.println("role: " + session.getRole());
++    }
++}
+diff --git a/src/test/java/com/studyroom/reservation/service/InMemoryAuthServiceTest.java b/src/test/java/com/studyroom/reservation/service/InMemoryAuthServiceTest.java
+new file mode 100644
+index 0000000..da60a0e
+--- /dev/null
++++ b/src/test/java/com/studyroom/reservation/service/InMemoryAuthServiceTest.java
+@@ -0,0 +1,65 @@
++package com.studyroom.reservation.service;
++
++import com.studyroom.reservation.enums.UserRole;
++import com.studyroom.reservation.exception.BusinessException;
++import com.studyroom.reservation.session.LoginSession;
++import org.junit.jupiter.api.BeforeEach;
++import org.junit.jupiter.api.Test;
++
++import static org.junit.jupiter.api.Assertions.assertEquals;
++import static org.junit.jupiter.api.Assertions.assertThrows;
++
++class InMemoryAuthServiceTest {
++
++    private AuthService authService;
++
++    @BeforeEach
++    void setUp() {
++        authService = new InMemoryAuthService();
++    }
++
++    @Test
++    void activeUserCanLogin() {
++        LoginSession session = authService.login(
++                "user004@studyroom.test",
++                "password"
++        );
++
++        assertEquals(4L, session.getUserId());
++        assertEquals(UserRole.USER, session.getRole());
++    }
++
++    @Test
++    void adminCanLogin() {
++        LoginSession session = authService.login(
++                "admin01@studyroom.test",
++                "password"
++        );
++
++        assertEquals(1L, session.getUserId());
++        assertEquals(UserRole.ADMIN, session.getRole());
++    }
++
++    @Test
++    void withdrawnUserCannotLogin() {
++        assertThrows(BusinessException.class, () -> authService.login(
++                "user111@studyroom.test",
++                "password"
++        ));
++    }
++
++    @Test
++    void logoutInvalidatesSession() {
++        LoginSession session = authService.login(
++                "user004@studyroom.test",
++                "password"
++        );
++
++        authService.logout(session.getSessionId());
++
++        assertThrows(
++                BusinessException.class,
++                () -> authService.requireLogin(session.getSessionId())
++        );
++    }
++}

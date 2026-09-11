@@ -1,6 +1,7 @@
-package com.studyroom.reservation.enums;
+package com.studyroom.reservation.auth;
 
 public enum UserRole {
     USER,
     ADMIN
 }
+
