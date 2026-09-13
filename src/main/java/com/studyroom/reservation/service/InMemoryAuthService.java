@@ -48,6 +48,13 @@ public final class InMemoryAuthService implements AuthService {
                 UserRole.USER,
                 UserStatus.WITHDRAWN
         );
+        addDevelopmentUser(
+                121L,
+                "user121@studyroom.test",
+                "password",
+                UserRole.USER,
+                UserStatus.ACTIVE
+        );
     }
 
     @Override
