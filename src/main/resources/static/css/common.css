@@ -443,14 +443,6 @@ a:hover {
     }
 }
 
-.app-body {
-    display: flex;
-    flex-direction: column;
-    padding: 0;
-
-    background: #edf1f5;
-}
-
 /* 프로젝트 산출물 링크가 포함된 공통 Footer */
 .footer-inner {
     width: 100%;
@@ -533,84 +525,9 @@ a:hover {
     }
 }
 
-/* 프로젝트 산출물 링크가 포함된 공통 Footer */
-.footer-inner {
-    width: 100%;
-    max-width: 1120px;
-    margin: 0 auto;
-    padding: 30px 24px 20px;
-}
-
-.footer-section {
-    display: flex;
-    align-items: flex-start;
-    gap: 24px;
-
-    padding: 13px 0;
-    border-bottom: 1px solid #cbd3dc;
-}
-
 .footer-section > strong {
     flex: 0 0 110px;
 
     color: #3d4d5e;
     font-size: 13px;
-}
-
-.footer-links {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px 18px;
-}
-
-.footer-links a {
-    color: #526b82;
-    font-size: 13px;
-    font-weight: normal;
-}
-
-.footer-links a::after {
-    margin-left: 4px;
-
-    content: "↗";
-    font-size: 11px;
-}
-
-.footer-links a:hover {
-    color: #24527a;
-}
-
-.app-footer .footer-copy {
-    margin: 0;
-    padding: 20px 0 0;
-
-    color: #718091;
-    background: transparent;
-    border: 0;
-    font-size: 12px;
-    text-align: right;
-}
-
-@media (max-width: 720px) {
-    .footer-inner {
-        padding: 24px 18px 18px;
-    }
-
-    .footer-section {
-        flex-direction: column;
-        gap: 8px;
-    }
-
-    .footer-section > strong {
-        flex-basis: auto;
-    }
-
-    .footer-links {
-        flex-direction: column;
-        gap: 8px;
-    }
-
-    .app-footer .footer-copy {
-        text-align: center;
-    }
 }
