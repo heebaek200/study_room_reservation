@@ -1,31 +1,192 @@
 package com.studyroom.reservation;
 
+import com.studyroom.reservation.exception.BusinessException;
+import com.studyroom.reservation.handler.AuthHandler;
+import com.studyroom.reservation.service.AuthService;
+import com.studyroom.reservation.service.JdbcAuthService;
 import com.studyroom.reservation.util.DatabaseUtil;
+import com.studyroom.reservation.util.HttpRequestUtil;
+import com.studyroom.reservation.util.HttpResponseUtil;
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpServer;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.InetSocketAddress;
+import java.util.concurrent.Executors;
 
-//TIP 코드를 <b>실행</b>하려면 <shortcut actionId="Run"/>을(를) 누르거나
-// 에디터 여백에 있는 <icon src="AllIcons.Actions.Execute"/> 아이콘을 클릭하세요.
-public class Main {
-    public static void main(String[] args) {
+/**
+ * 스터디룸 예약 관리 시스템의 HTTP 서버를 실행합니다.
+ * 각 기능의 Handler는 이 클래스에서 하나의 서버에 등록합니다.
+ */
+public final class Main {
 
-        try (Connection connection = DatabaseUtil.getConnection()) {
+    private static final int PORT = 8080;
+    private static final String SESSION_COOKIE_NAME = "SESSION_ID";
 
-            PreparedStatement statement = connection.prepareStatement("""
-SELECT * FROM users LIMIT 30 
-""");
+    private Main() {
+    }
 
-            ResultSet rs = statement.executeQuery();
-            while (rs.next()) {
-                System.out.println(rs.getString("name"));
-            }
+    /**
+     * 공통 인증 서비스를 생성하고 HTTP 서버를 시작합니다.
+     *
+     * @param args 실행 시 전달되는 명령행 인자
+     * @throws IOException HTTP 서버를 생성하지 못한 경우
+     */
+    public static void main(String[] args) throws IOException {
+        AuthService authService = new JdbcAuthService();
+        AuthHandler authHandler = new AuthHandler(authService);
 
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
+        HttpServer server = HttpServer.create(
+                new InetSocketAddress(PORT),
+                0
+        );
+
+        // 로그인
+        server.createContext("/login", authHandler);
+
+        // 회원가입
+        server.createContext("/signup", authHandler);
+
+        // 로그아웃
+        server.createContext("/logout", authHandler);
+
+        // 스터디룸 조회
+        server.createContext(
+                "/rooms",
+                exchange -> handleRooms(exchange, authService)
+        );
+
+        server.createContext(
+                "/css/common.css",
+                Main::sendCommonCss
+        );
+
+        /*
+         * "/" 컨텍스트는 등록되지 않은 모든 주소도 받을 수 있으므로
+         * 구체적인 경로를 등록한 다음 마지막에 등록합니다.
+         */
+        server.createContext(
+                "/",
+                exchange -> handleRoot(exchange, authService)
+        );
+
+        server.setExecutor(Executors.newFixedThreadPool(4));
+
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            server.stop(0);
+            DatabaseUtil.close();
+        }));
+
+        server.start();
+
+        System.out.println(
+                "서버가 시작되었습니다: http://localhost:" + PORT
+        );
+    }
+
+    /**
+     * 루트 URL에서 로그인 상태에 따라 기본 화면으로 이동합니다.
+     */
+    private static void handleRoot(
+            HttpExchange exchange,
+            AuthService authService
+    ) throws IOException {
+        String path = exchange.getRequestURI().getPath();
+
+        if (!"/".equals(path)) {
+            exchange.sendResponseHeaders(404, -1);
+            exchange.close();
+            return;
         }
 
+        if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+            exchange.sendResponseHeaders(405, -1);
+            exchange.close();
+            return;
+        }
+
+        String sessionId = HttpRequestUtil.findCookie(
+                exchange,
+                SESSION_COOKIE_NAME
+        );
+
+        try {
+            authService.requireLogin(sessionId);
+            HttpResponseUtil.redirect(exchange, "/rooms");
+        } catch (BusinessException e) {
+            HttpResponseUtil.redirect(exchange, "/login");
+        }
+    }
+
+    /**
+     * 로그인한 사용자에게 스터디룸 목록 화면을 제공합니다.
+     */
+    private static void handleRooms(HttpExchange exchange, AuthService authService) throws IOException {
+        String path = exchange.getRequestURI().getPath();
+
+        if (!"/rooms".equals(path)) {
+            exchange.sendResponseHeaders(404, -1);
+            exchange.close();
+            return;
+        }
+
+        if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+            exchange.sendResponseHeaders(405, -1);
+            exchange.close();
+            return;
+        }
+
+        String sessionId = HttpRequestUtil.findCookie(
+                exchange,
+                SESSION_COOKIE_NAME
+        );
+
+        try {
+            authService.requireLogin(sessionId);
+            HttpResponseUtil.sendTemplate(
+                    exchange,
+                    "rooms.html"
+            );
+        } catch (BusinessException e) {
+            HttpResponseUtil.redirect(exchange, "/login");
+        }
+    }
+
+    /**
+     * 공통 CSS 파일을 반환합니다.
+     */
+    private static void sendCommonCss(
+            HttpExchange exchange
+    ) throws IOException {
+        String resourcePath = "/static/css/common.css";
+
+        if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+            exchange.sendResponseHeaders(405, -1);
+            exchange.close();
+            return;
+        }
+
+        try (InputStream inputStream =
+                     Main.class.getResourceAsStream(resourcePath)) {
+            if (inputStream == null) {
+                exchange.sendResponseHeaders(404, -1);
+                return;
+            }
+
+            byte[] responseBody = inputStream.readAllBytes();
+
+            exchange.getResponseHeaders().set(
+                    "Content-Type",
+                    "text/css; charset=UTF-8"
+            );
+            exchange.sendResponseHeaders(
+                    200,
+                    responseBody.length
+            );
+            exchange.getResponseBody().write(responseBody);
+        } finally {
+            exchange.close();
+        }
     }
 }

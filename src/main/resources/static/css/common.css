@@ -1,0 +1,146 @@
+/* 스터디룸 관리 시스템답게 단정한 공공시설 예약 페이지 분위기로 구성합니다. */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    min-height: 100vh;
+    margin: 0;
+    padding: 64px 20px;
+
+    color: #24303f;
+    background: #edf1f5;
+    font-family: Arial, sans-serif;
+}
+
+main {
+    width: 100%;
+    max-width: 520px;
+    margin: 0 auto;
+
+    background: #fff;
+    border: 1px solid #cbd3dc;
+    border-top: 6px solid #24527a;
+}
+
+h1 {
+    margin: 0;
+    padding: 24px 28px;
+
+    color: #fff;
+    background: #24527a;
+    font-size: 24px;
+    font-weight: normal;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+
+    padding: 32px 28px;
+}
+
+form > div {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+label {
+    flex: 0 0 110px;
+
+    color: #3f4d5d;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+input {
+    flex: 1;
+    min-width: 0;
+    padding: 10px 12px;
+
+    color: #24303f;
+    background: #fafbfc;
+    border: 1px solid #aeb9c5;
+    border-radius: 2px;
+    font-size: 15px;
+}
+
+input:focus {
+    background: #fff;
+    border-color: #24527a;
+    outline: 1px solid #24527a;
+}
+
+button {
+    align-self: flex-end;
+    min-width: 120px;
+    padding: 11px 20px;
+
+    color: #fff;
+    background: #24527a;
+    border: 1px solid #183b59;
+    border-radius: 2px;
+    font-size: 15px;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #183b59;
+}
+
+button:active {
+    background: #102a40;
+}
+
+p {
+    margin: 0;
+    padding: 18px 28px;
+
+    color: #596879;
+    background: #f7f9fb;
+    border-top: 1px solid #dce2e8;
+    font-size: 14px;
+    text-align: right;
+}
+
+a {
+    color: #24527a;
+    font-weight: bold;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* 좁은 화면에서는 레이블과 입력창을 위아래로 배치합니다. */
+@media (max-width: 520px) {
+    body {
+        padding: 20px 12px;
+    }
+
+    form {
+        padding: 24px 20px;
+    }
+
+    form > div {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 7px;
+    }
+
+    label {
+        flex-basis: auto;
+    }
+
+    button {
+        align-self: stretch;
+    }
+
+    p {
+        padding: 16px 20px;
+        text-align: center;
+    }
+}
