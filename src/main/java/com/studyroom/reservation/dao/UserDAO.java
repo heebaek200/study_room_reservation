@@ -3,6 +3,7 @@ package com.studyroom.reservation.dao;
 import com.studyroom.reservation.dto.User;
 import com.studyroom.reservation.enums.UserRole;
 import com.studyroom.reservation.enums.UserStatus;
+import com.studyroom.reservation.exception.BusinessException;
 import com.studyroom.reservation.util.DatabaseUtil;
 
 import java.sql.Connection;
@@ -91,8 +92,6 @@ public class UserDAO {
     };
 
     public boolean withdrawIfPossible(long userId) throws SQLException {
-        Connection conn = null;
-        boolean hasConfirmedReservation;
         String existsSql = """
                 SELECT EXISTS (
                     SELECT 1
@@ -108,43 +107,37 @@ public class UserDAO {
                 WHERE user_id = ?
                   AND status = 'ACTIVE';
                 """;
-        try {conn = DatabaseUtil.getConnection();
+        try (Connection conn = DatabaseUtil.getConnection()) {
             conn.setAutoCommit(false);
-
-            try (PreparedStatement existsPstmt = conn.prepareStatement(existsSql)) {
-                existsPstmt.setLong(1, userId);
-                try (ResultSet rs = existsPstmt.executeQuery()) {
-                    rs.next();
-                    hasConfirmedReservation = rs.getBoolean("exists_confirmed");
+            try {
+                boolean hasConfirmedReservation;
+                try (PreparedStatement existsPstmt = conn.prepareStatement(existsSql)) {
+                    existsPstmt.setLong(1, userId);
+                    try (ResultSet rs = existsPstmt.executeQuery()) {
+                        rs.next();
+                        hasConfirmedReservation = rs.getBoolean("exists_confirmed");
+                    }
                 }
-            }
-            if (hasConfirmedReservation) {
-                conn.rollback();
-                return false;
-            }
-
-            try (PreparedStatement updatePsmtm = conn.prepareStatement(updateSql)) {
-                updatePsmtm.setLong(1, userId);
-                int rows = updatePsmtm.executeUpdate();
-                if (rows > 0){
-                    conn.commit();
-                } else {
+                if (hasConfirmedReservation) {
                     conn.rollback();
+                    return false;
                 }
-                return rows > 0;
-            }
 
-
-
-        } catch (SQLException e) {
-            if (conn != null) {
+                try (PreparedStatement updatePsmtm = conn.prepareStatement(updateSql)) {
+                    updatePsmtm.setLong(1, userId);
+                    int rows = updatePsmtm.executeUpdate();
+                    if (rows > 0) {
+                        conn.commit();
+                    } else {
+                        conn.rollback();
+                        throw new BusinessException("탈퇴 처리할 수 없는 회원입니다.");
+                    }
+                    return rows > 0;
+                }
+            } catch (SQLException e) {
                 conn.rollback();
-            }
-            throw  e;
-        }finally {
-            if (conn != null) {
-                conn.close();
+                throw e;
             }
         }
-    };
+    }
 }

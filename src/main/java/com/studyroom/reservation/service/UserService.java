@@ -6,6 +6,7 @@ import com.studyroom.reservation.enums.UserRole;
 import com.studyroom.reservation.exception.BusinessException;
 import com.studyroom.reservation.session.LoginSession;
 
+import java.sql.BatchUpdateException;
 import java.sql.SQLException;
 import java.util.List;
 
@@ -22,7 +23,11 @@ public class UserService {
 
     public User getMyInfo(String sessionId) throws SQLException {
         LoginSession session = authService.requireLogin(sessionId);
-        return userDAO.findById(session.getUserId());
+        User user = userDAO.findById(session.getUserId());
+        if (user == null){
+            throw new BusinessException("확인되는 정보가 없습니다");
+        }
+        return user;
     };
 
     public void updateMyName(String sessionId, String name) throws SQLException {
