@@ -51,8 +51,8 @@ public class DaoTestMain {
         System.out.println("3. 예약 ID + 회원 ID 동시 검증 조회 테스트 (findByIdAndUserId)");
         System.out.println("========================================");
         try {
-            Long testReservationId = 1L;
-            Long testUserId = 1L; // 일치하는 소유자 ID
+            Long testReservationId = 4L;
+            Long testUserId = 32L; // 일치하는 소유자 ID
 
             Optional<Reservation> reservationOpt = dao.findByIdAndUserId(testReservationId, testUserId);
 
