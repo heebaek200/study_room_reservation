@@ -144,3 +144,383 @@ a:hover {
         text-align: center;
     }
 }
+
+/* 로그인 이후 공통 애플리케이션 레이아웃 */
+.app-body {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+
+    background: #edf1f5;
+}
+
+.app-header {
+    color: #fff;
+    background: #24527a;
+    border-bottom: 1px solid #183b59;
+}
+
+.header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+
+    width: 100%;
+    max-width: 1120px;
+    min-height: 72px;
+    margin: 0 auto;
+    padding: 12px 24px;
+}
+
+.app-title {
+    color: #fff;
+    font-size: 21px;
+    font-weight: bold;
+}
+
+.app-title:hover {
+    text-decoration: none;
+}
+
+.login-info {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+
+    font-size: 14px;
+}
+
+.login-info > div {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+}
+
+.role-badge {
+    display: inline-block;
+    padding: 4px 8px;
+
+    color: #24527a;
+    background: #e5eef6;
+    border: 1px solid #b9cede;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.role-badge.admin {
+    color: #6f4010;
+    background: #fff0d8;
+    border-color: #e6c38e;
+}
+
+/* 기존 공통 form 스타일이 로그아웃 버튼에 적용되지 않게 합니다. */
+.logout-form {
+    display: block;
+    margin: 0;
+    padding: 0;
+}
+
+.logout-button {
+    min-width: auto;
+    padding: 7px 12px;
+
+    color: #fff;
+    background: transparent;
+    border: 1px solid #9cb7cd;
+    border-radius: 3px;
+    font-size: 13px;
+}
+
+.logout-button:hover {
+    background: #183b59;
+}
+
+.logout-button:active {
+    background: #102a40;
+}
+
+/* 권한별 공통 내비게이션 */
+.app-nav {
+    background: #fff;
+    border-bottom: 1px solid #cbd3dc;
+}
+
+.nav-list {
+    display: flex;
+    align-items: stretch;
+    gap: 2px;
+
+    width: 100%;
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 0 24px;
+
+    list-style: none;
+}
+
+.nav-link {
+    display: block;
+    padding: 16px 17px 13px;
+
+    color: #4b5b6c;
+    border-bottom: 3px solid transparent;
+    font-size: 14px;
+}
+
+.nav-link:hover {
+    color: #24527a;
+    background: #f3f6f9;
+    text-decoration: none;
+}
+
+.nav-link.current {
+    color: #24527a;
+    border-bottom-color: #24527a;
+}
+
+/* 로그인 이후 화면의 공통 본문 */
+.app-main {
+    width: 100%;
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 48px 24px 64px;
+
+    background: transparent;
+    border: 0;
+}
+
+.page-heading {
+    margin-bottom: 30px;
+}
+
+.page-heading .eyebrow {
+    margin: 0 0 8px;
+    padding: 0;
+
+    color: #527798;
+    background: transparent;
+    border: 0;
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 0.12em;
+    text-align: left;
+}
+
+.page-heading h1 {
+    margin: 0 0 12px;
+    padding: 0;
+
+    color: #24303f;
+    background: transparent;
+    font-size: 30px;
+    font-weight: bold;
+}
+
+.page-heading > p:last-child {
+    margin: 0;
+    padding: 0;
+
+    color: #667586;
+    background: transparent;
+    border: 0;
+    font-size: 15px;
+    line-height: 1.7;
+    text-align: left;
+}
+
+/* 기능 메뉴 카드 */
+.menu-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+}
+
+.menu-card {
+    display: flex;
+    flex: 1 1 calc(50% - 9px);
+    flex-direction: column;
+    gap: 10px;
+
+    min-width: 300px;
+    min-height: 140px;
+    padding: 25px;
+
+    color: #24303f;
+    background: #fff;
+    border: 1px solid #cbd3dc;
+    border-left: 5px solid #728ca3;
+    border-radius: 3px;
+    box-shadow: 0 2px 5px rgb(28 43 57 / 6%);
+}
+
+.menu-card:hover {
+    border-color: #9aabba;
+    border-left-color: #24527a;
+    box-shadow: 0 5px 12px rgb(28 43 57 / 12%);
+    text-decoration: none;
+}
+
+.menu-card strong {
+    color: #24527a;
+    font-size: 18px;
+}
+
+.menu-card span {
+    color: #667586;
+    font-size: 14px;
+    font-weight: normal;
+    line-height: 1.6;
+}
+
+/* 공통 하단 영역 */
+.app-footer {
+    margin-top: auto;
+
+    background: #e2e7ec;
+    border-top: 1px solid #cbd3dc;
+}
+
+.app-footer p {
+    width: 100%;
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 20px 24px;
+
+    color: #718091;
+    background: transparent;
+    border: 0;
+    font-size: 12px;
+    text-align: center;
+}
+
+/* 공통 레이아웃 반응형 처리 */
+@media (max-width: 720px) {
+    .header-inner {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 12px;
+
+        padding: 16px 18px;
+    }
+
+    .login-info {
+        justify-content: space-between;
+        width: 100%;
+    }
+
+    .nav-list {
+        overflow-x: auto;
+        padding: 0 10px;
+    }
+
+    .nav-link {
+        padding: 14px 12px 11px;
+
+        white-space: nowrap;
+    }
+
+    .app-main {
+        padding: 32px 16px 48px;
+    }
+
+    .page-heading h1 {
+        font-size: 25px;
+    }
+
+    .menu-card {
+        flex-basis: 100%;
+        min-width: 0;
+    }
+
+    .logout-form {
+        padding: 0;
+    }
+
+    .logout-button {
+        align-self: auto;
+    }
+}
+
+/* 프로젝트 산출물 링크가 포함된 공통 Footer */
+.footer-inner {
+    width: 100%;
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 30px 24px 20px;
+}
+
+.footer-section {
+    display: flex;
+    align-items: flex-start;
+    gap: 24px;
+
+    padding: 13px 0;
+    border-bottom: 1px solid #cbd3dc;
+}
+
+.footer-section > strong {
+    flex: 0 0 110px;
+
+    color: #3d4d5e;
+    font-size: 13px;
+}
+
+.footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+}
+
+.footer-links a {
+    color: #526b82;
+    font-size: 13px;
+    font-weight: normal;
+}
+
+.footer-links a::after {
+    margin-left: 4px;
+
+    content: "↗";
+    font-size: 11px;
+}
+
+.footer-links a:hover {
+    color: #24527a;
+}
+
+.app-footer .footer-copy {
+    margin: 0;
+    padding: 20px 0 0;
+
+    color: #718091;
+    background: transparent;
+    border: 0;
+    font-size: 12px;
+    text-align: right;
+}
+
+@media (max-width: 720px) {
+    .footer-inner {
+        padding: 24px 18px 18px;
+    }
+
+    .footer-section {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .footer-section > strong {
+        flex-basis: auto;
+    }
+
+    .footer-links {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .app-footer .footer-copy {
+        text-align: center;
+    }
+}

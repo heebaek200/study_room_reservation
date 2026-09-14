@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0"
+    >
+    <title>관리자 홈 | 스터디룸 예약 관리</title>
+    <link rel="stylesheet" href="/css/common.css">
+</head>
+<body class="app-body">
+
+<header class="app-header">
+    <div class="header-inner">
+        <a class="app-title" href="/home">
+            스터디룸 예약 관리
+        </a>
+
+        <div class="login-info">
+            <div>
+                <strong>{{userName}}</strong>
+                <span class="role-badge admin">
+                    {{roleName}}
+                </span>
+            </div>
+
+            <form
+                    class="logout-form"
+                    action="/logout"
+                    method="post"
+            >
+                <button
+                        class="logout-button"
+                        type="submit"
+                >
+                    로그아웃
+                </button>
+            </form>
+        </div>
+    </div>
+</header>
+
+<nav class="app-nav" aria-label="관리자 메뉴">
+    <ul class="nav-list">
+        <li>
+            <a class="nav-link current" href="/home">
+                홈
+            </a>
+        </li>
+        <li>
+            <a class="nav-link" href="/rooms">
+                스터디룸
+            </a>
+        </li>
+        <li>
+            <a class="nav-link" href="/admin/rooms">
+                스터디룸 관리
+            </a>
+        </li>
+        <li>
+            <a class="nav-link" href="/admin/users">
+                회원 관리
+            </a>
+        </li>
+        <li>
+            <a class="nav-link" href="/admin/reservations">
+                전체 예약
+            </a>
+        </li>
+        <li>
+            <a class="nav-link" href="/admin/refunds">
+                환불 관리
+            </a>
+        </li>
+    </ul>
+</nav>
+
+<main class="app-main">
+    <section class="page-heading">
+        <p class="eyebrow">ADMIN HOME</p>
+        <h1>{{userName}} 관리자님, 안녕하세요.</h1>
+        <p>
+            스터디룸과 회원 정보를 확인하고 예약 및 환불
+            현황을 관리할 수 있습니다.
+        </p>
+    </section>
+
+    <section
+            class="menu-grid"
+            aria-label="관리자 기능"
+    >
+        <a class="menu-card" href="/rooms">
+            <strong>스터디룸 조회</strong>
+            <span>
+                등록된 스터디룸의 목록과 상세 정보를 확인합니다.
+            </span>
+        </a>
+
+        <a class="menu-card" href="/admin/rooms">
+            <strong>스터디룸 관리</strong>
+            <span>
+                스터디룸을 등록하고 기본 정보를 수정합니다.
+            </span>
+        </a>
+
+        <a class="menu-card" href="/admin/users">
+            <strong>회원 관리</strong>
+            <span>
+                가입된 전체 회원의 정보와 상태를 확인합니다.
+            </span>
+        </a>
+
+        <a class="menu-card" href="/admin/reservations">
+            <strong>전체 예약</strong>
+            <span>
+                회원들이 생성한 전체 예약을 확인합니다.
+            </span>
+        </a>
+
+        <a class="menu-card" href="/admin/refunds">
+            <strong>환불 관리</strong>
+            <span>
+                환불 요청을 확인하고 승인 또는 거절합니다.
+            </span>
+        </a>
+    </section>
+</main>
+
+<footer class="app-footer">
+    <div class="footer-inner">
+        <section class="footer-section">
+            <strong>프로젝트</strong>
+
+            <div class="footer-links">
+                <a
+                        href="https://github.com/heebaek200/study_room_reservation"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                >
+                    GitHub 저장소
+                </a>
+
+                <a
+                        href="https://github.com/heebaek200/study_room_reservation/wiki"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                >
+                    Wiki 홈
+                </a>
+            </div>
+        </section>
+
+        <section class="footer-section">
+            <strong>설계 문서</strong>
+
+            <div class="footer-links">
+                <a
+                        href="https://github.com/heebaek200/study_room_reservation/wiki/요구사항-명세서"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                >
+                    요구사항 명세서
+                </a>
+
+                <a
+                        href="https://github.com/heebaek200/study_room_reservation/wiki/권한별-기능-매트릭스"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                >
+                    권한별 기능 매트릭스
+                </a>
+
+                <a
+                        href="https://github.com/heebaek200/study_room_reservation/wiki/데이터베이스-설계서-및-ERD"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                >
+                    DB 설계서·ERD
+                </a>
+
+                <a
+                        href="https://github.com/heebaek200/study_room_reservation/wiki/사용자-시나리오-및-업무-규칙"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                >
+                    사용자 시나리오·업무 규칙
+                </a>
+
+                <a
+                        href="https://github.com/heebaek200/study_room_reservation/wiki/작업-분담-및-Issue-목록"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                >
+                    작업 분담·Issue 목록
+                </a>
+            </div>
+        </section>
+
+        <section class="footer-section">
+            <strong>구현 및 검증</strong>
+
+            <div class="footer-links">
+                <a href="https://heebaek200.github.io/study_room_reservation/"
+                   target="_blank"
+                   rel="noopener noreferrer">
+                    동시성 테스트 결과
+                </a>
+            </div>
+        </section>
+
+        <p class="footer-copy">
+            Study Room Reservation System
+        </p>
+    </div>
+</footer>
+
+</body>
+</html>
