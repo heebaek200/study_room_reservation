@@ -9,6 +9,11 @@ import com.studyroom.reservation.service.JdbcAuthService;
 import com.studyroom.reservation.util.DatabaseUtil;
 import com.studyroom.reservation.util.HttpRequestUtil;
 import com.studyroom.reservation.util.HttpResponseUtil;
+import com.studyroom.reservation.dao.ReservationCreateDAO;
+import com.studyroom.reservation.dao.StudyRoomDAO;
+import com.studyroom.reservation.handler.ReservationCreateHandler;
+import com.studyroom.reservation.service.ReservationCreateService;
+import com.studyroom.reservation.service.StudyRoomService;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 
@@ -33,6 +38,25 @@ public final class Main {
         AuthService authService = new JdbcAuthService();
         UserDAO userDAO = new UserDAO();
 
+        ReservationCreateDAO reservationCreateDAO =
+                new ReservationCreateDAO();
+
+        StudyRoomDAO studyRoomDAO =
+                new StudyRoomDAO();
+
+        StudyRoomService studyRoomService =
+                new StudyRoomService(
+                        studyRoomDAO,
+                        authService
+                );
+
+        ReservationCreateService reservationCreateService =
+                new ReservationCreateService(
+                        authService,
+                        userDAO,
+                        reservationCreateDAO
+                );
+
         AuthHandler authHandler =
                 new AuthHandler(authService);
 
@@ -40,6 +64,13 @@ public final class Main {
                 new HomeHandler(
                         authService,
                         userDAO
+                );
+
+        ReservationCreateHandler reservationCreateHandler =
+                new ReservationCreateHandler(
+                        authService,
+                        studyRoomService,
+                        reservationCreateService
                 );
 
         HttpServer server = HttpServer.create(
@@ -69,6 +100,12 @@ public final class Main {
         server.createContext(
                 "/home",
                 homeHandler
+        );
+
+        // 일반 회원 예약 신청
+        server.createContext(
+                "/reservations/create",
+                reservationCreateHandler
         );
 
         /*
