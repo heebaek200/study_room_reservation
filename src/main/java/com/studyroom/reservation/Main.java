@@ -53,7 +53,7 @@ public final class Main {
         // 스터디룸 조회
         server.createContext(
                 "/rooms",
-                exchange -> handleRooms(exchange, authService)해
+                exchange -> handleRooms(exchange, authService)
         );
 
         server.createContext(
