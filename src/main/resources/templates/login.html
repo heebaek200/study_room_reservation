@@ -2,8 +2,43 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>로그인</title>
+    <link rel="stylesheet" href="/css/common.css">
 </head>
 <body>
+<main>
+    <h1>로그인</h1>
+
+    <form action="/login" method="post">
+        <div>
+            <label for="email">이메일</label>
+            <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autocomplete="email"
+                    required
+            >
+        </div>
+
+        <div>
+            <label for="password">비밀번호</label>
+            <input
+                    id="password"
+                    name="password"
+                    type="password"
+                    autocomplete="current-password"
+                    required
+            >
+        </div>
+
+        <button type="submit">로그인</button>
+    </form>
+
+    <p>
+        계정이 없다면 <a href="/signup">회원가입</a>
+    </p>
+</main>
 </body>
 </html>
