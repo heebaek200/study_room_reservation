@@ -290,3 +290,4 @@ $RECYCLE.BIN/
 .gradle/
 build/
 /src/test/java/
+/.omc/state/
