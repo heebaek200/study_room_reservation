@@ -287,6 +287,6 @@ $RECYCLE.BIN/
 
 # End of https://www.toptal.com/developers/gitignore/api/windows,macos,eclipse,visualstudiocode,intellij,java
 
+### Gradle ###
 .gradle/
 build/
-/src/test/java/
