@@ -4,7 +4,6 @@ import com.sun.net.httpserver.HttpExchange;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.List;
 
 /**
  * HTTP 응답에서 공통으로 사용하는 기능을 제공합니다.
@@ -21,7 +20,7 @@ public final class HttpResponseUtil {
      * @param fileName 반환할 HTML 파일명
      * @throws IOException 파일 또는 응답을 처리하지 못한 경우
      */
-    public static void sendTemplate(HttpExchange exchange, String fileName ) throws IOException {
+    public static void sendTemplate(HttpExchange exchange, String fileName) throws IOException {
         String resourcePath = "/templates/" + fileName;
 
         try (InputStream inputStream =
