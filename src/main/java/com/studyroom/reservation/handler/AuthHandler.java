@@ -11,6 +11,7 @@ import java.io.InputStream;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -23,6 +24,9 @@ public final class AuthHandler implements HttpHandler {
 
     private static final String LOGIN_PATH = "/login";
     private static final String SIGNUP_PATH = "/signup";
+    private static final String LOGOUT_PATH = "/logout";
+
+    private static final String SESSION_COOKIE_NAME = "SESSION_ID";
 
     private final AuthService authService;
 
@@ -73,6 +77,13 @@ public final class AuthHandler implements HttpHandler {
                 return;
             }
 
+            // 로그아웃은 세션 상태를 변경하므로 POST 요청으로 처리합니다.
+            if (LOGOUT_PATH.equals(path)
+                    && "POST".equalsIgnoreCase(method)) {
+                handleLogout(exchange);
+                return;
+            }
+
             sendMessage(exchange, 404, "요청한 페이지를 찾을 수 없습니다.");
         } catch (BusinessException e) {
             // BusinessException 메시지에는 평문 비밀번호가 포함되지 않아야 합니다.
@@ -112,7 +123,7 @@ public final class AuthHandler implements HttpHandler {
     /**
      * 로그인 Form 데이터를 읽고 AuthService의 로그인 기능을 호출합니다.
      * 로그인에 성공하면 발급받은 세션 ID를 HttpOnly 쿠키로 전달합니다.
-     * 비밀번호와 비밀번호 해시는 응답이나 쿠키에 포함하지 않습니다.
+     * 성공 화면에서는 POST 방식으로 로그아웃을 요청할 수 있습니다.
      *
      * @param exchange 현재 HTTP 요청과 응답
      * @throws IOException 요청 본문이나 응답을 처리하지 못한 경우
@@ -128,11 +139,72 @@ public final class AuthHandler implements HttpHandler {
 
         exchange.getResponseHeaders().add(
                 "Set-Cookie",
-                "SESSION_ID=" + session.getSessionId()
+                SESSION_COOKIE_NAME + "=" + session.getSessionId()
                         + "; Path=/; HttpOnly; SameSite=Lax"
         );
 
-        sendMessage(exchange, 200, "로그인에 성공했습니다.");
+        sendLoginSuccess(exchange);
+    }
+
+    /**
+     * 요청 쿠키에서 세션 ID를 찾아 로그인 세션을 제거합니다.
+     * 서버 세션을 제거한 뒤 브라우저의 SESSION_ID 쿠키도 만료시킵니다.
+     * 처리가 끝나면 로그인 화면으로 이동합니다.
+     *
+     * @param exchange 현재 HTTP 요청과 응답
+     * @throws IOException 응답을 전송하지 못한 경우
+     */
+    private void handleLogout(HttpExchange exchange) throws IOException {
+        String sessionId = findCookie(
+                exchange,
+                SESSION_COOKIE_NAME
+        );
+
+        // 세션 ID가 없거나 이미 제거된 경우에도 로그아웃은 정상 종료합니다.
+        authService.logout(sessionId);
+
+        exchange.getResponseHeaders().add(
+                "Set-Cookie",
+                SESSION_COOKIE_NAME
+                        + "=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0"
+        );
+
+        redirect(exchange, LOGIN_PATH);
+    }
+
+    /**
+     * HTTP 요청의 Cookie 헤더에서 지정한 이름의 값을 찾습니다.
+     * 여러 Cookie 헤더와 세미콜론으로 구분된 쿠키를 모두 검사합니다.
+     * 요청한 쿠키가 없으면 null을 반환합니다.
+     *
+     * @param exchange 현재 HTTP 요청과 응답
+     * @param cookieName 찾을 쿠키 이름
+     * @return 쿠키값 또는 null
+     */
+    private String findCookie(
+            HttpExchange exchange,
+            String cookieName
+    ) {
+        List<String> cookieHeaders =
+                exchange.getRequestHeaders().get("Cookie");
+
+        if (cookieHeaders == null) {
+            return null;
+        }
+
+        // 하나의 Cookie 헤더에는 여러 쿠키가 세미콜론으로 구분될 수 있습니다.
+        for (String cookieHeader : cookieHeaders) {
+            for (String cookie : cookieHeader.split(";")) {
+                String[] pair = cookie.trim().split("=", 2);
+
+                if (pair.length == 2
+                        && cookieName.equals(pair[0])) {
+                    return pair[1];
+                }
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -213,6 +285,53 @@ public final class AuthHandler implements HttpHandler {
             }
 
             byte[] responseBody = inputStream.readAllBytes();
+            exchange.getResponseHeaders().set(
+                    "Content-Type",
+                    "text/html; charset=UTF-8"
+            );
+            exchange.sendResponseHeaders(200, responseBody.length);
+            exchange.getResponseBody().write(responseBody);
+        } finally {
+            exchange.close();
+        }
+    }
+
+    /**
+     * 로그인 성공 메시지와 로그아웃 버튼을 포함한 HTML을 응답합니다.
+     * 로그아웃 요청은 상태를 변경하므로 POST 방식의 Form을 사용합니다.
+     * 평문 비밀번호나 비밀번호 해시는 응답에 포함하지 않습니다.
+     *
+     * @param exchange 현재 HTTP 요청과 응답
+     * @throws IOException 응답을 전송하지 못한 경우
+     */
+    private void sendLoginSuccess(HttpExchange exchange)
+            throws IOException {
+        String html = """
+            <!DOCTYPE html>
+            <html lang="ko">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport"
+                      content="width=device-width, initial-scale=1.0">
+                <title>로그인 완료</title>
+                <link rel="stylesheet" href="/css/common.css">
+            </head>
+            <body>
+                <main>
+                    <h1>로그인 완료</h1>
+                    <p>로그인에 성공했습니다.</p>
+
+                    <form action="/logout" method="post">
+                        <button type="submit">로그아웃</button>
+                    </form>
+                </main>
+            </body>
+            </html>
+            """;
+
+        byte[] responseBody = html.getBytes(StandardCharsets.UTF_8);
+
+        try {
             exchange.getResponseHeaders().set(
                     "Content-Type",
                     "text/html; charset=UTF-8"

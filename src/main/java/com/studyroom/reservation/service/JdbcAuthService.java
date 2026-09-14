@@ -21,6 +21,8 @@ public final class JdbcAuthService implements AuthService {
     private static final String LOGIN_FAILURE_MESSAGE =
             "이메일 또는 비밀번호가 올바르지 않습니다.";
 
+    private static final int MIN_PASSWORD_LENGTH = 6;
+
     private final AuthDAO authDAO;
     private final SessionManager sessionManager;
 
@@ -49,6 +51,13 @@ public final class JdbcAuthService implements AuthService {
         String normalizedName = normalizeName(name);
 
         requireNotBlank(rawPassword, "비밀번호");
+
+        // HTML 검증을 우회한 요청도 가입할 수 없도록 서버에서 다시 검사합니다.
+        if (rawPassword.length() < MIN_PASSWORD_LENGTH) {
+            throw new BusinessException(
+                    "비밀번호는 " + MIN_PASSWORD_LENGTH + "자 이상이어야 합니다."
+            );
+        }
 
         // ACTIVE와 WITHDRAWN을 구분하지 않고 기존 이메일을 모두 검사합니다.
         if (authDAO.existsByEmail(normalizedEmail)) {

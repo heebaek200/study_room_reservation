@@ -46,6 +46,7 @@ public final class AuthServer {
 
         server.createContext("/login", authHandler);
         server.createContext("/signup", authHandler);
+        server.createContext("/logout", authHandler);
         server.setExecutor(Executors.newFixedThreadPool(4));
 
         // 프로그램 종료 시 HTTP 서버와 커넥션 풀을 함께 정리합니다.
