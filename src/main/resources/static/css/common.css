@@ -524,10 +524,3 @@ a:hover {
         text-align: center;
     }
 }
-
-.footer-section > strong {
-    flex: 0 0 110px;
-
-    color: #3d4d5e;
-    font-size: 13px;
-}
