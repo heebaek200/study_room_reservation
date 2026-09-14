@@ -150,7 +150,7 @@ public final class AuthHandler implements HttpHandler {
                         + "; Path=/; HttpOnly; SameSite=Lax"
         );
 
-        HttpResponseUtil.redirect(exchange, "/rooms");
+        HttpResponseUtil.redirect(exchange, "/home");
     }
 
     /**

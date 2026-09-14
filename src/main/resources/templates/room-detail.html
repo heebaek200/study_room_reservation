@@ -2,8 +2,261 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>스터디룸 상세</title>
+
+    <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>예약 신청 | 스터디룸 예약 관리</title>
+
+    <link
+            rel="stylesheet"
+            href="/css/common.css"
+    >
 </head>
-<body>
+
+<body class="app-body">
+
+<header class="app-header">
+    <div class="header-inner">
+        <a class="app-title" href="/home">
+            스터디룸 예약 관리
+        </a>
+
+        <div class="login-info">
+            <span class="role-badge">
+                일반 회원
+            </span>
+
+            <form
+                    class="logout-form"
+                    action="/logout"
+                    method="post"
+            >
+                <button
+                        class="logout-button"
+                        type="submit"
+                >
+                    로그아웃
+                </button>
+            </form>
+        </div>
+    </div>
+</header>
+
+<nav class="app-nav" aria-label="주요 메뉴">
+    <ul class="nav-list">
+        <li>
+            <a class="nav-link" href="/home">
+                홈
+            </a>
+        </li>
+
+        <li>
+            <a
+                    class="nav-link current"
+                    href="/rooms"
+            >
+                스터디룸
+            </a>
+        </li>
+
+        <li>
+            <a class="nav-link" href="/my-info">
+                내 정보
+            </a>
+        </li>
+
+        <li>
+            <a
+                    class="nav-link"
+                    href="/my-reservations"
+            >
+                내 예약
+            </a>
+        </li>
+
+        <li>
+            <a class="nav-link" href="/my-refunds">
+                내 환불
+            </a>
+        </li>
+    </ul>
+</nav>
+
+<main class="app-main">
+    <section class="page-heading">
+        <p class="eyebrow">
+            RESERVATION
+        </p>
+
+        <h1>스터디룸 예약 신청</h1>
+
+        <p>
+            이용할 스터디룸과 시간을 확인한 뒤
+            예약을 신청해 주세요.
+        </p>
+    </section>
+
+    <!-- 스터디룸 정보 -->
+    <article aria-labelledby="room-heading">
+        <header>
+            <p>선택한 스터디룸</p>
+
+            <h2 id="room-heading">
+                {{roomName}}
+            </h2>
+
+            <small>
+                스터디룸 번호: {{roomId}}
+            </small>
+        </header>
+
+        <dl>
+            <div>
+                <dt>수용 인원</dt>
+                <dd>{{capacity}}명</dd>
+            </div>
+
+            <div>
+                <dt>시간당 이용료</dt>
+                <dd>{{hourlyRate}}원</dd>
+            </div>
+        </dl>
+    </article>
+
+    <!-- 예약 신청 -->
+    <article aria-labelledby="reservation-heading">
+        <header>
+            <h2 id="reservation-heading">
+                예약 시간 입력
+            </h2>
+
+            <p>
+                종료 일시는 시작 일시보다 늦어야 합니다.
+            </p>
+        </header>
+
+        <form
+                action="/reservations/create"
+                method="post"
+        >
+            <input
+                    type="hidden"
+                    name="roomId"
+                    value="{{roomId}}"
+            >
+
+            <div>
+                <label for="startTime">
+                    시작 일시
+                </label>
+
+                <input
+                        id="startTime"
+                        name="startTime"
+                        type="datetime-local"
+                        value="{{startTime}}"
+                        step="60"
+                        required
+                >
+            </div>
+
+            <div>
+                <label for="endTime">
+                    종료 일시
+                </label>
+
+                <input
+                        id="endTime"
+                        name="endTime"
+                        type="datetime-local"
+                        value="{{endTime}}"
+                        step="60"
+                        required
+                >
+            </div>
+
+            <output
+                    role="status"
+                    aria-live="polite"
+            >{{resultMessage}}</output>
+
+            <menu>
+                <li>
+                    <a href="/rooms">
+                        목록으로
+                    </a>
+                </li>
+
+                <li>
+                    <a href="/home">
+                        홈으로
+                    </a>
+                </li>
+
+                <li>
+                    <button type="submit">
+                        예약 신청
+                    </button>
+                </li>
+            </menu>
+        </form>
+    </article>
+</main>
+
+<footer class="app-footer">
+    <div class="footer-inner">
+        <section class="footer-section">
+            <strong>프로젝트</strong>
+
+            <div class="footer-links">
+                <a
+                        href="https://github.com/heebaek200/study_room_reservation"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                >
+                    GitHub 저장소
+                </a>
+
+                <a
+                        href="https://github.com/heebaek200/study_room_reservation/wiki"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                >
+                    Wiki 홈
+                </a>
+            </div>
+        </section>
+
+        <section class="footer-section">
+            <strong>구현 및 검증</strong>
+
+            <div class="footer-links">
+                <a
+                        href="https://github.com/heebaek200/study_room_reservation/issues/25"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                >
+                    예약 신청 GUI Issue
+                </a>
+
+                <a
+                        href="https://heebaek200.github.io/study_room_reservation/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                >
+                    동시성 테스트 결과
+                </a>
+            </div>
+        </section>
+
+        <p class="footer-copy">
+            Study Room Reservation System
+        </p>
+    </div>
+</footer>
+
 </body>
 </html>
