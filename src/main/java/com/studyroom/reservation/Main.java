@@ -5,6 +5,8 @@ import com.studyroom.reservation.handler.AuthHandler;
 import com.studyroom.reservation.service.AuthService;
 import com.studyroom.reservation.service.JdbcAuthService;
 import com.studyroom.reservation.util.DatabaseUtil;
+import com.studyroom.reservation.util.HttpRequestUtil;
+import com.studyroom.reservation.util.HttpResponseUtil;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 
@@ -105,26 +107,23 @@ public final class Main {
             return;
         }
 
-        String sessionId = findCookie(
+        String sessionId = HttpRequestUtil.findCookie(
                 exchange,
                 SESSION_COOKIE_NAME
         );
 
         try {
             authService.requireLogin(sessionId);
-            redirect(exchange, "/rooms");
+            HttpResponseUtil.redirect(exchange, "/rooms");
         } catch (BusinessException e) {
-            redirect(exchange, "/login");
+            HttpResponseUtil.redirect(exchange, "/login");
         }
     }
 
     /**
      * 로그인한 사용자에게 스터디룸 목록 화면을 제공합니다.
      */
-    private static void handleRooms(
-            HttpExchange exchange,
-            AuthService authService
-    ) throws IOException {
+    private static void handleRooms(HttpExchange exchange, AuthService authService) throws IOException {
         String path = exchange.getRequestURI().getPath();
 
         if (!"/rooms".equals(path)) {
@@ -139,91 +138,19 @@ public final class Main {
             return;
         }
 
-        String sessionId = findCookie(
+        String sessionId = HttpRequestUtil.findCookie(
                 exchange,
                 SESSION_COOKIE_NAME
         );
 
         try {
             authService.requireLogin(sessionId);
-            sendTemplate(exchange, "rooms.html");
+            HttpResponseUtil.sendTemplate(
+                    exchange,
+                    "rooms.html"
+            );
         } catch (BusinessException e) {
-            redirect(exchange, "/login");
-        }
-    }
-
-    /**
-     * 요청의 Cookie 헤더에서 지정한 쿠키를 찾습니다.
-     */
-    private static String findCookie(
-            HttpExchange exchange,
-            String cookieName
-    ) {
-        List<String> cookieHeaders =
-                exchange.getRequestHeaders().get("Cookie");
-
-        if (cookieHeaders == null) {
-            return null;
-        }
-
-        for (String cookieHeader : cookieHeaders) {
-            for (String cookie : cookieHeader.split(";")) {
-                String[] pair = cookie.trim().split("=", 2);
-
-                if (pair.length == 2
-                        && cookieName.equals(pair[0])) {
-                    return pair[1];
-                }
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * 브라우저를 지정한 경로로 이동시킵니다.
-     */
-    private static void redirect(
-            HttpExchange exchange,
-            String location
-    ) throws IOException {
-        exchange.getResponseHeaders().set(
-                "Location",
-                location
-        );
-        exchange.sendResponseHeaders(303, -1);
-        exchange.close();
-    }
-
-    /**
-     * templates 디렉터리의 HTML 파일을 반환합니다.
-     */
-    private static void sendTemplate(
-            HttpExchange exchange,
-            String fileName
-    ) throws IOException {
-        String resourcePath = "/templates/" + fileName;
-
-        try (InputStream inputStream =
-                     Main.class.getResourceAsStream(resourcePath)) {
-            if (inputStream == null) {
-                exchange.sendResponseHeaders(404, -1);
-                return;
-            }
-
-            byte[] responseBody = inputStream.readAllBytes();
-
-            exchange.getResponseHeaders().set(
-                    "Content-Type",
-                    "text/html; charset=UTF-8"
-            );
-            exchange.sendResponseHeaders(
-                    200,
-                    responseBody.length
-            );
-            exchange.getResponseBody().write(responseBody);
-        } finally {
-            exchange.close();
+            HttpResponseUtil.redirect(exchange, "/login");
         }
     }
 

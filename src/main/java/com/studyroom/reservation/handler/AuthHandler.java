@@ -3,6 +3,8 @@ package com.studyroom.reservation.handler;
 import com.studyroom.reservation.exception.BusinessException;
 import com.studyroom.reservation.service.AuthService;
 import com.studyroom.reservation.session.LoginSession;
+import com.studyroom.reservation.util.HttpRequestUtil;
+import com.studyroom.reservation.util.HttpResponseUtil;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 
@@ -11,7 +13,6 @@ import java.io.InputStream;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -57,7 +58,10 @@ public final class AuthHandler implements HttpHandler {
         try {
             // 로그인 화면 조회와 로그인 요청을 구분하여 처리합니다.
             if (LOGIN_PATH.equals(path) && "GET".equalsIgnoreCase(method)) {
-                sendTemplate(exchange, "login.html");
+                HttpResponseUtil.sendTemplate(
+                        exchange,
+                        "login.html"
+                );
                 return;
             }
 
@@ -68,7 +72,10 @@ public final class AuthHandler implements HttpHandler {
 
             // 회원가입 화면 조회와 회원가입 요청을 구분하여 처리합니다.
             if (SIGNUP_PATH.equals(path) && "GET".equalsIgnoreCase(method)) {
-                sendTemplate(exchange, "signup.html");
+                HttpResponseUtil.sendTemplate(
+                        exchange,
+                        "signup.html"
+                );
                 return;
             }
 
@@ -117,7 +124,7 @@ public final class AuthHandler implements HttpHandler {
         authService.signUp(email, password, name);
 
         // POST 결과를 새로고침했을 때 중복 제출되지 않도록 Redirect합니다.
-        redirect(exchange, LOGIN_PATH);
+        HttpResponseUtil.redirect(exchange, LOGIN_PATH);
     }
 
     /**
@@ -143,7 +150,7 @@ public final class AuthHandler implements HttpHandler {
                         + "; Path=/; HttpOnly; SameSite=Lax"
         );
 
-        redirect(exchange, "/rooms");
+        HttpResponseUtil.redirect(exchange, "/rooms");
     }
 
     /**
@@ -155,7 +162,7 @@ public final class AuthHandler implements HttpHandler {
      * @throws IOException 응답을 전송하지 못한 경우
      */
     private void handleLogout(HttpExchange exchange) throws IOException {
-        String sessionId = findCookie(
+        String sessionId = HttpRequestUtil.findCookie(
                 exchange,
                 SESSION_COOKIE_NAME
         );
@@ -169,42 +176,7 @@ public final class AuthHandler implements HttpHandler {
                         + "=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0"
         );
 
-        redirect(exchange, LOGIN_PATH);
-    }
-
-    /**
-     * HTTP 요청의 Cookie 헤더에서 지정한 이름의 값을 찾습니다.
-     * 여러 Cookie 헤더와 세미콜론으로 구분된 쿠키를 모두 검사합니다.
-     * 요청한 쿠키가 없으면 null을 반환합니다.
-     *
-     * @param exchange 현재 HTTP 요청과 응답
-     * @param cookieName 찾을 쿠키 이름
-     * @return 쿠키값 또는 null
-     */
-    private String findCookie(
-            HttpExchange exchange,
-            String cookieName
-    ) {
-        List<String> cookieHeaders =
-                exchange.getRequestHeaders().get("Cookie");
-
-        if (cookieHeaders == null) {
-            return null;
-        }
-
-        // 하나의 Cookie 헤더에는 여러 쿠키가 세미콜론으로 구분될 수 있습니다.
-        for (String cookieHeader : cookieHeaders) {
-            for (String cookie : cookieHeader.split(";")) {
-                String[] pair = cookie.trim().split("=", 2);
-
-                if (pair.length == 2
-                        && cookieName.equals(pair[0])) {
-                    return pair[1];
-                }
-            }
-        }
-
-        return null;
+        HttpResponseUtil.redirect(exchange, LOGIN_PATH);
     }
 
     /**
@@ -262,41 +234,6 @@ public final class AuthHandler implements HttpHandler {
     }
 
     /**
-     * resources/templates 아래의 HTML 파일을 읽어 응답합니다.
-     * 클래스패스에서 파일을 찾지 못하면 404 오류를 반환합니다.
-     * HTML 문서는 UTF-8 형식으로 전송합니다.
-     *
-     * @param exchange 현재 HTTP 요청과 응답
-     * @param fileName 전송할 HTML 파일명
-     * @throws IOException 파일이나 응답을 처리하지 못한 경우
-     */
-    private void sendTemplate(
-            HttpExchange exchange,
-            String fileName
-    ) throws IOException {
-        String resourcePath = "/templates/" + fileName;
-
-        // 빌드 결과에 포함된 클래스패스 리소스를 읽습니다.
-        try (InputStream inputStream =
-                     AuthHandler.class.getResourceAsStream(resourcePath)) {
-            if (inputStream == null) {
-                sendMessage(exchange, 404, "화면 파일을 찾을 수 없습니다.");
-                return;
-            }
-
-            byte[] responseBody = inputStream.readAllBytes();
-            exchange.getResponseHeaders().set(
-                    "Content-Type",
-                    "text/html; charset=UTF-8"
-            );
-            exchange.sendResponseHeaders(200, responseBody.length);
-            exchange.getResponseBody().write(responseBody);
-        } finally {
-            exchange.close();
-        }
-    }
-
-    /**
      * 처리 결과를 간단한 HTML 문서로 만들어 응답합니다.
      * 메시지는 HTML 특수문자를 변환하여 그대로 태그로 실행되지 않게 합니다.
      * 응답 본문은 UTF-8 형식으로 전송합니다.
@@ -339,24 +276,6 @@ public final class AuthHandler implements HttpHandler {
         } finally {
             exchange.close();
         }
-    }
-
-    /**
-     * 브라우저에 다른 주소로 이동하라는 응답을 반환합니다.
-     * POST 요청 이후 새로고침으로 같은 요청이 반복되는 것을 방지합니다.
-     * 응답 본문 없이 303 See Other 상태를 사용합니다.
-     *
-     * @param exchange 현재 HTTP 요청과 응답
-     * @param location 이동할 경로
-     * @throws IOException 응답을 전송하지 못한 경우
-     */
-    private void redirect(
-            HttpExchange exchange,
-            String location
-    ) throws IOException {
-        exchange.getResponseHeaders().set("Location", location);
-        exchange.sendResponseHeaders(303, -1);
-        exchange.close();
     }
 
     /**
