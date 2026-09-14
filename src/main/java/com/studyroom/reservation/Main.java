@@ -1,7 +1,9 @@
 package com.studyroom.reservation;
 
+import com.studyroom.reservation.dao.UserDAO;
 import com.studyroom.reservation.exception.BusinessException;
 import com.studyroom.reservation.handler.AuthHandler;
+import com.studyroom.reservation.handler.HomeHandler;
 import com.studyroom.reservation.service.AuthService;
 import com.studyroom.reservation.service.JdbcAuthService;
 import com.studyroom.reservation.util.DatabaseUtil;
@@ -27,15 +29,18 @@ public final class Main {
     private Main() {
     }
 
-    /**
-     * 공통 인증 서비스를 생성하고 HTTP 서버를 시작합니다.
-     *
-     * @param args 실행 시 전달되는 명령행 인자
-     * @throws IOException HTTP 서버를 생성하지 못한 경우
-     */
     public static void main(String[] args) throws IOException {
         AuthService authService = new JdbcAuthService();
-        AuthHandler authHandler = new AuthHandler(authService);
+        UserDAO userDAO = new UserDAO();
+
+        AuthHandler authHandler =
+                new AuthHandler(authService);
+
+        HomeHandler homeHandler =
+                new HomeHandler(
+                        authService,
+                        userDAO
+                );
 
         HttpServer server = HttpServer.create(
                 new InetSocketAddress(PORT),
@@ -43,20 +48,42 @@ public final class Main {
         );
 
         // 로그인
-        server.createContext("/login", authHandler);
-
-        // 회원가입
-        server.createContext("/signup", authHandler);
-
-        // 로그아웃
-        server.createContext("/logout", authHandler);
-
-        // 스터디룸 조회
         server.createContext(
-                "/rooms",
-                exchange -> handleRooms(exchange, authService)
+                "/login",
+                authHandler
         );
 
+        // 회원가입
+        server.createContext(
+                "/signup",
+                authHandler
+        );
+
+        // 로그아웃
+        server.createContext(
+                "/logout",
+                authHandler
+        );
+
+        // 로그인 이후 공통 홈
+        server.createContext(
+                "/home",
+                homeHandler
+        );
+
+        /*
+         * 현재 임시 스터디룸 화면입니다.
+         * 이후 스터디룸 GUI Issue에서 전용 Handler로 교체합니다.
+         */
+        server.createContext(
+                "/rooms",
+                exchange -> handleRooms(
+                        exchange,
+                        authService
+                )
+        );
+
+        // 공통 CSS
         server.createContext(
                 "/css/common.css",
                 Main::sendCommonCss
@@ -64,29 +91,37 @@ public final class Main {
 
         /*
          * "/" 컨텍스트는 등록되지 않은 모든 주소도 받을 수 있으므로
-         * 구체적인 경로를 등록한 다음 마지막에 등록합니다.
+         * 구체적인 경로를 먼저 등록하고 마지막에 등록합니다.
          */
         server.createContext(
                 "/",
-                exchange -> handleRoot(exchange, authService)
+                exchange -> handleRoot(
+                        exchange,
+                        authService
+                )
         );
 
-        server.setExecutor(Executors.newFixedThreadPool(4));
+        server.setExecutor(
+                Executors.newFixedThreadPool(4)
+        );
 
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            server.stop(0);
-            DatabaseUtil.close();
-        }));
+        Runtime.getRuntime().addShutdownHook(
+                new Thread(() -> {
+                    server.stop(0);
+                    DatabaseUtil.close();
+                })
+        );
 
         server.start();
 
         System.out.println(
-                "서버가 시작되었습니다: http://localhost:" + PORT
+                "서버가 시작되었습니다: http://localhost:"
+                        + PORT
         );
     }
 
     /**
-     * 루트 URL에서 로그인 상태에 따라 기본 화면으로 이동합니다.
+     * 로그인 상태에 따라 로그인 또는 공통 홈으로 이동합니다.
      */
     private static void handleRoot(
             HttpExchange exchange,
@@ -100,7 +135,9 @@ public final class Main {
             return;
         }
 
-        if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+        if (!"GET".equalsIgnoreCase(
+                exchange.getRequestMethod()
+        )) {
             exchange.sendResponseHeaders(405, -1);
             exchange.close();
             return;
@@ -113,16 +150,26 @@ public final class Main {
 
         try {
             authService.requireLogin(sessionId);
-            HttpResponseUtil.redirect(exchange, "/rooms");
+
+            HttpResponseUtil.redirect(
+                    exchange,
+                    "/home"
+            );
         } catch (BusinessException e) {
-            HttpResponseUtil.redirect(exchange, "/login");
+            HttpResponseUtil.redirect(
+                    exchange,
+                    "/login"
+            );
         }
     }
 
     /**
-     * 로그인한 사용자에게 스터디룸 목록 화면을 제공합니다.
+     * 로그인한 사용자에게 임시 스터디룸 화면을 제공합니다.
      */
-    private static void handleRooms(HttpExchange exchange, AuthService authService) throws IOException {
+    private static void handleRooms(
+            HttpExchange exchange,
+            AuthService authService
+    ) throws IOException {
         String path = exchange.getRequestURI().getPath();
 
         if (!"/rooms".equals(path)) {
@@ -131,7 +178,9 @@ public final class Main {
             return;
         }
 
-        if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+        if (!"GET".equalsIgnoreCase(
+                exchange.getRequestMethod()
+        )) {
             exchange.sendResponseHeaders(405, -1);
             exchange.close();
             return;
@@ -144,12 +193,16 @@ public final class Main {
 
         try {
             authService.requireLogin(sessionId);
+
             HttpResponseUtil.sendTemplate(
                     exchange,
                     "rooms.html"
             );
         } catch (BusinessException e) {
-            HttpResponseUtil.redirect(exchange, "/login");
+            HttpResponseUtil.redirect(
+                    exchange,
+                    "/login"
+            );
         }
     }
 
@@ -159,32 +212,42 @@ public final class Main {
     private static void sendCommonCss(
             HttpExchange exchange
     ) throws IOException {
-        String resourcePath = "/static/css/common.css";
+        String resourcePath =
+                "/static/css/common.css";
 
-        if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+        if (!"GET".equalsIgnoreCase(
+                exchange.getRequestMethod()
+        )) {
             exchange.sendResponseHeaders(405, -1);
             exchange.close();
             return;
         }
 
         try (InputStream inputStream =
-                     Main.class.getResourceAsStream(resourcePath)) {
+                     Main.class.getResourceAsStream(
+                             resourcePath
+                     )) {
             if (inputStream == null) {
                 exchange.sendResponseHeaders(404, -1);
                 return;
             }
 
-            byte[] responseBody = inputStream.readAllBytes();
+            byte[] responseBody =
+                    inputStream.readAllBytes();
 
             exchange.getResponseHeaders().set(
                     "Content-Type",
                     "text/css; charset=UTF-8"
             );
+
             exchange.sendResponseHeaders(
                     200,
                     responseBody.length
             );
-            exchange.getResponseBody().write(responseBody);
+
+            exchange.getResponseBody().write(
+                    responseBody
+            );
         } finally {
             exchange.close();
         }
