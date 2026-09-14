@@ -143,7 +143,7 @@ public final class AuthHandler implements HttpHandler {
                         + "; Path=/; HttpOnly; SameSite=Lax"
         );
 
-        sendLoginSuccess(exchange);
+        redirect(exchange, "/rooms");
     }
 
     /**
@@ -285,53 +285,6 @@ public final class AuthHandler implements HttpHandler {
             }
 
             byte[] responseBody = inputStream.readAllBytes();
-            exchange.getResponseHeaders().set(
-                    "Content-Type",
-                    "text/html; charset=UTF-8"
-            );
-            exchange.sendResponseHeaders(200, responseBody.length);
-            exchange.getResponseBody().write(responseBody);
-        } finally {
-            exchange.close();
-        }
-    }
-
-    /**
-     * 로그인 성공 메시지와 로그아웃 버튼을 포함한 HTML을 응답합니다.
-     * 로그아웃 요청은 상태를 변경하므로 POST 방식의 Form을 사용합니다.
-     * 평문 비밀번호나 비밀번호 해시는 응답에 포함하지 않습니다.
-     *
-     * @param exchange 현재 HTTP 요청과 응답
-     * @throws IOException 응답을 전송하지 못한 경우
-     */
-    private void sendLoginSuccess(HttpExchange exchange)
-            throws IOException {
-        String html = """
-            <!DOCTYPE html>
-            <html lang="ko">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport"
-                      content="width=device-width, initial-scale=1.0">
-                <title>로그인 완료</title>
-                <link rel="stylesheet" href="/css/common.css">
-            </head>
-            <body>
-                <main>
-                    <h1>로그인 완료</h1>
-                    <p>로그인에 성공했습니다.</p>
-
-                    <form action="/logout" method="post">
-                        <button type="submit">로그아웃</button>
-                    </form>
-                </main>
-            </body>
-            </html>
-            """;
-
-        byte[] responseBody = html.getBytes(StandardCharsets.UTF_8);
-
-        try {
             exchange.getResponseHeaders().set(
                     "Content-Type",
                     "text/html; charset=UTF-8"
