@@ -4,16 +4,14 @@ import com.studyroom.reservation.dao.UserDAO;
 import com.studyroom.reservation.exception.BusinessException;
 import com.studyroom.reservation.handler.AuthHandler;
 import com.studyroom.reservation.handler.HomeHandler;
-import com.studyroom.reservation.service.AuthService;
-import com.studyroom.reservation.service.JdbcAuthService;
+import com.studyroom.reservation.handler.UserHandler;
+import com.studyroom.reservation.service.*;
 import com.studyroom.reservation.util.DatabaseUtil;
 import com.studyroom.reservation.util.HttpRequestUtil;
 import com.studyroom.reservation.util.HttpResponseUtil;
 import com.studyroom.reservation.dao.ReservationCreateDAO;
 import com.studyroom.reservation.dao.StudyRoomDAO;
 import com.studyroom.reservation.handler.ReservationCreateHandler;
-import com.studyroom.reservation.service.ReservationCreateService;
-import com.studyroom.reservation.service.StudyRoomService;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 
@@ -66,6 +64,15 @@ public final class Main {
                         userDAO
                 );
 
+        UserService userService =
+                new UserService(
+                        authService,
+                        userDAO
+                );
+
+        UserHandler userHandler =
+                new UserHandler(userService);
+
         ReservationCreateHandler reservationCreateHandler =
                 new ReservationCreateHandler(
                         authService,
@@ -101,6 +108,10 @@ public final class Main {
                 "/home",
                 homeHandler
         );
+
+        // 회원
+        server.createContext("/my-info", userHandler);
+        server.createContext("/admin/users", userHandler);
 
         // 일반 회원 예약 신청
         server.createContext(

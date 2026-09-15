@@ -19,8 +19,8 @@ import java.util.Map;
 
 public class UserHandler implements HttpHandler {
 
-    private static final String INFO_PATH = "/info";
-    private static final String WITHDRAW_PATH = "/info/withdraw";
+    private static final String INFO_PATH = "/my-info";
+    private static final String WITHDRAW_PATH = "/my-info/withdraw";
     private static final String ADMIN_USERS_PATH = "/admin/users";
 
     private static final String SESSION_COOKIE_NAME = "SESSION_ID";
@@ -68,7 +68,7 @@ public class UserHandler implements HttpHandler {
         }
     }
 
-    // 2. GET /info - 로그인한 회원 정보를 조회해서 my-info.html로 보여줌
+    // 2. GET /my-info - 로그인한 회원 정보를 조회해서 my-info.html로 보여줌
     private void handleMyInfo(HttpExchange exchange) throws IOException, SQLException {
         String sessionId = HttpRequestUtil.findCookie(exchange, SESSION_COOKIE_NAME);
 
@@ -128,8 +128,8 @@ public class UserHandler implements HttpHandler {
         }
     }
 
-    // 3. POST /info - 폼으로 제출한 새 이름으로 수정. 성공하면 /info로 redirect(PRG 패턴),
-    //    실패하면(BusinessException) 에러 페이지 대신 /info 화면에 안내 문구를 같이 보여줌
+    // 3. POST /my-info - 폼으로 제출한 새 이름으로 수정. 성공하면 /my-info로 redirect(PRG 패턴),
+    //    실패하면(BusinessException) 에러 페이지 대신 /my-info 화면에 안내 문구를 같이 보여줌
     private void handleUpdateName(HttpExchange exchange) throws IOException, SQLException {
         // 쿠키에서 sessionId 추출 (누가 요청했는지)
         String sessionId = HttpRequestUtil.findCookie(exchange, SESSION_COOKIE_NAME);
@@ -147,8 +147,8 @@ public class UserHandler implements HttpHandler {
         HttpResponseUtil.redirect(exchange, INFO_PATH + "?updated=true");
     }
 
-    // 4. POST /info/withdraw - 탈퇴 처리. 성공하면 세션 쿠키를 만료시키고 완료 안내 화면을 보여줌(닫기 버튼으로 로그인 이동),
-    //    실패하면(확정 예약 존재 등) /info 화면에 안내 문구를 같이 보여줌
+    // 4. POST /my-info/withdraw - 탈퇴 처리. 성공하면 세션 쿠키를 만료시키고 완료 안내 화면을 보여줌(닫기 버튼으로 로그인 이동),
+    //    실패하면(확정 예약 존재 등) /my-info 화면에 안내 문구를 같이 보여줌
     private void handleWithdraw(HttpExchange exchange) throws SQLException, IOException {
         String sessionId = HttpRequestUtil.findCookie(exchange, SESSION_COOKIE_NAME);
 
@@ -281,7 +281,7 @@ public class UserHandler implements HttpHandler {
                 <body>
                     <h1>처리 결과</h1>
                     <p>%s</p>
-                    <p><a href="/info">내 정보</a></p>
+                    <p><a href="/my-info">내 정보</a></p>
                 </body>
                 </html>
                 """.formatted(escapeHtml(message));
