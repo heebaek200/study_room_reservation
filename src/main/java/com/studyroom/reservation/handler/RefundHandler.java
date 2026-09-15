@@ -53,25 +53,25 @@ public final class RefundHandler implements HttpHandler {
                 return;
             }
 
-            if ("/admin-reservations".equals(path)
+            if ("/admin/reservations".equals(path)
                     && "GET".equalsIgnoreCase(method)) {
                 handleAdminReservations(exchange);
                 return;
             }
 
-            if ("/admin-refunds".equals(path)
+            if ("/admin/refunds".equals(path)
                     && "GET".equalsIgnoreCase(method)) {
                 handleAdminRefunds(exchange);
                 return;
             }
 
-            if ("/admin-refunds/approve".equals(path)
+            if ("/admin/refunds/approve".equals(path)
                     && "POST".equalsIgnoreCase(method)) {
                 processRefund(exchange, true);
                 return;
             }
 
-            if ("/admin-refunds/reject".equals(path)
+            if ("/admin/refunds/reject".equals(path)
                     && "POST".equalsIgnoreCase(method)) {
                 processRefund(exchange, false);
                 return;
@@ -181,7 +181,10 @@ public final class RefundHandler implements HttpHandler {
                 HttpRequestUtil.parseQuery(exchange);
 
         String statusValue = query.get("status");
-        String resultMessage = query.get("result");
+        String resultMessage =
+                "success".equals(query.get("result"))
+                        ? "처리가 완료되었습니다."
+                        : "";
 
         List<Refund> refunds;
 
@@ -248,7 +251,7 @@ public final class RefundHandler implements HttpHandler {
 
         HttpResponseUtil.redirect(
                 exchange,
-                "/admin-refunds?result=처리가 완료되었습니다."
+                "/admin/refunds?result=success"
         );
     }
 
@@ -307,7 +310,7 @@ public final class RefundHandler implements HttpHandler {
         if (refunds.isEmpty()) {
             return """
                     <tr>
-                        <td colspan="5">
+                        <td colspan="4">
                             환불 내역이 없습니다.
                         </td>
                     </tr>
@@ -321,14 +324,14 @@ public final class RefundHandler implements HttpHandler {
 
             if (refund.getStatus() == RefundStatus.REQUESTED) {
                 action = """
-                        <form action="/admin-refunds/approve"
+                        <form action="/admin/refunds/approve"
                               method="post">
                             <input type="hidden"
                                    name="refundId"
                                    value="%d">
                             <button type="submit">승인</button>
                         </form>
-                        <form action="/admin-refunds/reject"
+                        <form action="/admin/refunds/reject"
                               method="post">
                             <input type="hidden"
                                    name="refundId"
