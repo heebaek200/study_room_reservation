@@ -32,16 +32,21 @@ public class MemberRefundQueryDAO {
             throws SQLException {
 
         String sql = """
-                SELECT refund.refund_id
-                     , refund.reservation_id
-                     , refund.status
-                FROM refund
-                INNER JOIN reservation
-                        ON reservation.reservation_id
-                        = refund.reservation_id
-                WHERE reservation.user_id = ?
-                ORDER BY refund.refund_id DESC
-                """;
+            SELECT refund.refund_id
+                 , refund.reservation_id
+                 , study_room.name AS room_name
+                 , reservation.total_price AS refund_amount
+                 , refund.status
+            FROM refund
+            INNER JOIN reservation
+                    ON reservation.reservation_id
+                    = refund.reservation_id
+            INNER JOIN study_room
+                    ON study_room.room_id
+                    = reservation.room_id
+            WHERE reservation.user_id = ?
+            ORDER BY refund.refund_id DESC
+            """;
 
         List<Refund> refunds = new ArrayList<>();
 
@@ -69,10 +74,10 @@ public class MemberRefundQueryDAO {
         return Refund.builder()
                 .refundId(rs.getLong("refund_id"))
                 .reservationId(rs.getLong("reservation_id"))
+                .roomName(rs.getString("room_name"))
+                .refundAmount(rs.getBigDecimal("refund_amount"))
                 .status(
-                        RefundStatus.valueOf(
-                                rs.getString("status")
-                        )
+                        RefundStatus.valueOf(rs.getString("status"))
                 )
                 .build();
     }
