@@ -3,6 +3,7 @@ package com.studyroom.reservation.handler;
 import com.studyroom.reservation.dto.Refund;
 import com.studyroom.reservation.dto.Reservation;
 import com.studyroom.reservation.enums.RefundStatus;
+import com.studyroom.reservation.enums.ReservationStatus;
 import com.studyroom.reservation.exception.BusinessException;
 import com.studyroom.reservation.service.AdminRefundService;
 import com.studyroom.reservation.service.AdminReservationQueryService;
@@ -15,7 +16,9 @@ import com.sun.net.httpserver.HttpHandler;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 public final class RefundHandler implements HttpHandler {
@@ -172,15 +175,21 @@ public final class RefundHandler implements HttpHandler {
     /**
      * 관리자의 전체 환불 또는 상태별 환불을 조회합니다.
      */
+    /**
+     * 관리자의 환불 목록·상태별 목록·상세 정보를 조회합니다.
+     */
     private void handleAdminRefunds(
             HttpExchange exchange
     ) throws IOException, SQLException {
 
         String sessionId = findSessionId(exchange);
+
         Map<String, String> query =
                 HttpRequestUtil.parseQuery(exchange);
 
+        String refundIdValue = query.get("refundId");
         String statusValue = query.get("status");
+
         String resultMessage =
                 "success".equals(query.get("result"))
                         ? "처리가 완료되었습니다."
@@ -188,21 +197,34 @@ public final class RefundHandler implements HttpHandler {
 
         List<Refund> refunds;
 
-        if (statusValue == null
+        // 환불 번호가 있으면 상세 조회를 우선합니다.
+        if (refundIdValue != null && !refundIdValue.isBlank()) {
+            long refundId = parseId(
+                    refundIdValue,
+                    "환불 번호"
+            );
+
+            Refund refund = adminRefundService.getRefund(
+                    sessionId,
+                    refundId
+            );
+
+            // 기존 테이블 출력 메서드를 재사용합니다.
+            refunds = List.of(refund);
+
+        } else if (statusValue == null
                 || statusValue.isBlank()
                 || "ALL".equalsIgnoreCase(statusValue)) {
 
             refunds = adminRefundService.getRefunds(sessionId);
 
         } else {
-            RefundStatus status =
-                    parseRefundStatus(statusValue);
+            RefundStatus status = parseRefundStatus(statusValue);
 
-            refunds =
-                    adminRefundService.getRefundsByStatus(
-                            sessionId,
-                            status
-                    );
+            refunds = adminRefundService.getRefundsByStatus(
+                    sessionId,
+                    status
+            );
         }
 
         HttpResponseUtil.sendTemplateWithHtml(
@@ -365,44 +387,68 @@ public final class RefundHandler implements HttpHandler {
     /**
      * 관리자 예약 목록 HTML을 생성합니다.
      */
+    /**
+     * 관리자 예약 목록 HTML을 생성합니다.
+     */
     private String buildReservationRows(
             List<Reservation> reservations
     ) {
         if (reservations.isEmpty()) {
             return """
-                    <tr>
-                        <td colspan="7">
-                            예약 내역이 없습니다.
-                        </td>
-                    </tr>
-                    """;
+                <tr>
+                    <td colspan="7">예약 내역이 없습니다.</td>
+                </tr>
+                """;
         }
+
+        DateTimeFormatter formatter =
+                DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
         StringBuilder rows = new StringBuilder();
 
         for (Reservation reservation : reservations) {
             rows.append("""
-                    <tr>
-                        <td>%d</td>
-                        <td>%d</td>
-                        <td>%d</td>
-                        <td>%s</td>
-                        <td>%s</td>
-                        <td>%s</td>
-                        <td>%s</td>
-                    </tr>
-                    """.formatted(
+                <tr>
+                    <td>%d</td>
+                    <td>%d</td>
+                    <td>%d</td>
+                    <td>%s</td>
+                    <td>%s</td>
+                    <td>%s원</td>
+                    <td>%s</td>
+                </tr>
+                """.formatted(
                     reservation.getReservationId(),
                     reservation.getUserId(),
                     reservation.getRoomId(),
-                    reservation.getStartTime(),
-                    reservation.getEndTime(),
-                    reservation.getTotalPrice(),
-                    reservation.getStatus()
+                    reservation.getStartTime().format(formatter),
+                    reservation.getEndTime().format(formatter),
+                    String.format(
+                            Locale.KOREA,
+                            "%,.0f",
+                            reservation.getTotalPrice()
+                    ),
+                    reservationStatusLabel(reservation.getStatus())
             ));
         }
 
         return rows.toString();
+    }
+
+    /**
+     * 예약 상태를 한글 배지 HTML로 변환합니다.
+     */
+    private String reservationStatusLabel(ReservationStatus status) {
+        return switch (status) {
+            case CONFIRMED ->
+                    """
+                    <span class="status status-approved">예약 확정</span>
+                    """;
+            case CANCELLED ->
+                    """
+                    <span class="status status-rejected">예약 취소</span>
+                    """;
+        };
     }
 
     private RefundStatus parseRefundStatus(
