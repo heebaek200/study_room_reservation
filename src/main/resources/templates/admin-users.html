@@ -2,8 +2,26 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>회원 관리</title>
+    <link rel="stylesheet" href="/css/common.css">
 </head>
 <body>
+<main>
+    <h1>회원 관리</h1>
+
+    <table>
+        <thead>
+        <tr><th>ID</th><th>이메일</th><th>이름</th><th>권한</th><th>상태</th></tr>
+        </thead>
+        <tbody>
+        %s
+        </tbody>
+    </table>
+
+    <p>
+        <a href="/rooms">스터디룸 목록으로</a>
+    </p>
+</main>
 </body>
 </html>
