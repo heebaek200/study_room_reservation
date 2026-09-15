@@ -5,7 +5,11 @@ import com.studyroom.reservation.exception.BusinessException;
 import com.studyroom.reservation.handler.AuthHandler;
 import com.studyroom.reservation.handler.HomeHandler;
 import com.studyroom.reservation.handler.UserHandler;
-import com.studyroom.reservation.service.*;
+import com.studyroom.reservation.service.AuthService;
+import com.studyroom.reservation.service.JdbcAuthService;
+import com.studyroom.reservation.service.ReservationCreateService;
+import com.studyroom.reservation.service.StudyRoomService;
+import com.studyroom.reservation.service.UserService;
 import com.studyroom.reservation.util.DatabaseUtil;
 import com.studyroom.reservation.util.HttpRequestUtil;
 import com.studyroom.reservation.util.HttpResponseUtil;
@@ -120,16 +124,24 @@ public final class Main {
         );
 
         /*
-         * 현재 임시 스터디룸 화면입니다.
-         * 이후 스터디룸 GUI Issue에서 전용 Handler로 교체합니다.
+         * 아래 라우터는 담당 GUI Issue가 main에 병합된 뒤 활성화합니다.
+         *
+         * // 스터디룸
+         * server.createContext("/rooms", studyRoomHandler);
+         * server.createContext("/admin/rooms", studyRoomHandler);
+         *
+         * // 예약 조회 및 취소
+         * server.createContext("/my-reservations", reservationQueryHandler);
+         * server.createContext("/reservations/cancel", reservationCancelHandler);
+         *
+         * // 환불 및 관리자 조회
+         * server.createContext("/my-refunds", refundHandler);
+         * server.createContext("/admin/reservations", refundHandler);
+         * server.createContext("/admin/refunds", refundHandler);
+         *
+         * // 정적 파일
+         * server.createContext("/css/", staticFileHandler);
          */
-        server.createContext(
-                "/rooms",
-                exchange -> handleRooms(
-                        exchange,
-                        authService
-                )
-        );
 
         // 공통 CSS
         server.createContext(
