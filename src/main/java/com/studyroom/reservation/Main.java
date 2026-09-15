@@ -4,21 +4,23 @@ import com.studyroom.reservation.dao.UserDAO;
 import com.studyroom.reservation.exception.BusinessException;
 import com.studyroom.reservation.handler.AuthHandler;
 import com.studyroom.reservation.handler.HomeHandler;
+import com.studyroom.reservation.handler.UserHandler;
+import com.studyroom.reservation.handler.StaticFileHandler;
 import com.studyroom.reservation.service.AuthService;
 import com.studyroom.reservation.service.JdbcAuthService;
+import com.studyroom.reservation.service.ReservationCreateService;
+import com.studyroom.reservation.service.StudyRoomService;
+import com.studyroom.reservation.service.UserService;
 import com.studyroom.reservation.util.DatabaseUtil;
 import com.studyroom.reservation.util.HttpRequestUtil;
 import com.studyroom.reservation.util.HttpResponseUtil;
 import com.studyroom.reservation.dao.ReservationCreateDAO;
 import com.studyroom.reservation.dao.StudyRoomDAO;
 import com.studyroom.reservation.handler.ReservationCreateHandler;
-import com.studyroom.reservation.service.ReservationCreateService;
-import com.studyroom.reservation.service.StudyRoomService;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.util.concurrent.Executors;
 
@@ -66,12 +68,24 @@ public final class Main {
                         userDAO
                 );
 
+        UserService userService =
+                new UserService(
+                        authService,
+                        userDAO
+                );
+
+        UserHandler userHandler =
+                new UserHandler(userService);
+
         ReservationCreateHandler reservationCreateHandler =
                 new ReservationCreateHandler(
                         authService,
                         studyRoomService,
                         reservationCreateService
                 );
+
+        StaticFileHandler staticFileHandler =
+                new StaticFileHandler();
 
         HttpServer server = HttpServer.create(
                 new InetSocketAddress(PORT),
@@ -102,6 +116,10 @@ public final class Main {
                 homeHandler
         );
 
+        // 회원
+        server.createContext("/my-info", userHandler);
+        server.createContext("/admin/users", userHandler);
+
         // 일반 회원 예약 신청
         server.createContext(
                 "/reservations/create",
@@ -109,8 +127,7 @@ public final class Main {
         );
 
         /*
-         * 현재 임시 스터디룸 화면입니다.
-         * 이후 스터디룸 GUI Issue에서 전용 Handler로 교체합니다.
+         * #24가 병합되기 전까지 사용하는 임시 스터디룸 화면 ~
          */
         server.createContext(
                 "/rooms",
@@ -119,11 +136,29 @@ public final class Main {
                         authService
                 )
         );
+        // ~ 이상 #24가 병합되면 삭제
 
-        // 공통 CSS
+        /*
+         * 아래 라우터는 담당 GUI Issue가 main에 병합된 뒤 활성화합니다.
+         *
+         * // 스터디룸
+         * server.createContext("/rooms", studyRoomHandler);
+         * server.createContext("/admin/rooms", studyRoomHandler);
+         *
+         * // 예약 조회 및 취소
+         * server.createContext("/my-reservations", reservationQueryHandler);
+         * server.createContext("/reservations/cancel", reservationCancelHandler);
+         *
+         * // 환불 및 관리자 조회
+         * server.createContext("/my-refunds", refundHandler);
+         * server.createContext("/admin/reservations", refundHandler);
+         * server.createContext("/admin/refunds", refundHandler);
+         */
+
+        // 정적 파일
         server.createContext(
-                "/css/common.css",
-                Main::sendCommonCss
+                "/css/",
+                staticFileHandler
         );
 
         /*
@@ -240,53 +275,6 @@ public final class Main {
                     exchange,
                     "/login"
             );
-        }
-    }
-
-    /**
-     * 공통 CSS 파일을 반환합니다.
-     */
-    private static void sendCommonCss(
-            HttpExchange exchange
-    ) throws IOException {
-        String resourcePath =
-                "/static/css/common.css";
-
-        if (!"GET".equalsIgnoreCase(
-                exchange.getRequestMethod()
-        )) {
-            exchange.sendResponseHeaders(405, -1);
-            exchange.close();
-            return;
-        }
-
-        try (InputStream inputStream =
-                     Main.class.getResourceAsStream(
-                             resourcePath
-                     )) {
-            if (inputStream == null) {
-                exchange.sendResponseHeaders(404, -1);
-                return;
-            }
-
-            byte[] responseBody =
-                    inputStream.readAllBytes();
-
-            exchange.getResponseHeaders().set(
-                    "Content-Type",
-                    "text/css; charset=UTF-8"
-            );
-
-            exchange.sendResponseHeaders(
-                    200,
-                    responseBody.length
-            );
-
-            exchange.getResponseBody().write(
-                    responseBody
-            );
-        } finally {
-            exchange.close();
         }
     }
 }
