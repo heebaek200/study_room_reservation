@@ -2,6 +2,8 @@ package com.studyroom.reservation.util;
 
 import com.sun.net.httpserver.HttpExchange;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -14,23 +16,43 @@ public final class HttpResponseUtil {
     }
 
     /**
-     * resources/templates 디렉터리의 HTML 파일을 반환합니다.
-     *
-     * @param exchange 현재 HTTP 요청과 응답
-     * @param fileName 반환할 HTML 파일명
-     * @throws IOException 파일 또는 응답을 처리하지 못한 경우
+     * 치환값 없이 HTML 템플릿을 반환합니다.
      */
     public static void sendTemplate(HttpExchange exchange, String fileName) throws IOException {
+        sendTemplate(exchange, fileName, Map.of());
+    }
+
+    /**
+     * HTML 템플릿의 {{항목명}}을 전달받은 값으로 치환합니다.
+     */
+    public static void sendTemplate(HttpExchange exchange, String fileName, Map<String, String> values) throws IOException {
         String resourcePath = "/templates/" + fileName;
 
-        try (InputStream inputStream =
-                     HttpResponseUtil.class.getResourceAsStream(resourcePath)) {
+        try (InputStream inputStream = HttpResponseUtil.class.getResourceAsStream(resourcePath)) {
             if (inputStream == null) {
                 exchange.sendResponseHeaders(404, -1);
                 return;
             }
 
-            byte[] responseBody = inputStream.readAllBytes();
+            String html = new String(
+                    inputStream.readAllBytes(),
+                    StandardCharsets.UTF_8
+            );
+
+            for (Map.Entry<String, String> entry
+                    : values.entrySet()) {
+                String placeholder =
+                        "{{" + entry.getKey() + "}}";
+
+                html = html.replace(
+                        placeholder,
+                        escapeHtml(entry.getValue())
+                );
+            }
+
+            byte[] responseBody = html.getBytes(
+                    StandardCharsets.UTF_8
+            );
 
             exchange.getResponseHeaders().set(
                     "Content-Type",
@@ -44,6 +66,22 @@ public final class HttpResponseUtil {
         } finally {
             exchange.close();
         }
+    }
+
+    /**
+     * 동적으로 출력하는 문자열의 HTML 특수문자를 변환합니다.
+     */
+    private static String escapeHtml(String value) {
+        if (value == null) {
+            return "";
+        }
+
+        return value
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
     }
 
     /**
