@@ -2,11 +2,149 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>스터디룸 목록</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>스터디룸 예약 관리 - 스터디룸 목록</title>
+    <link rel="stylesheet" href="/css/common.css">
 </head>
-<body>
-    <form action="/logout" method="post">
-        <button type="submit">로그아웃</button>
-    </form>
+<body class="app-body">
+
+<!-- [공통 헤더] -->
+<header class="app-header">
+    <div class="header-inner">
+        <a class="app-title" href="/home">스터디룸 예약 관리</a>
+        <div class="login-info">
+            <div>
+                <strong>{{userName}}</strong>
+                <span class="role-badge">{{roleName}}</span>
+            </div>
+            <form class="logout-form" action="/logout" method="post">
+                <button class="logout-button" type="submit">로그아웃</button>
+            </form>
+        </div>
+    </div>
+</header>
+
+<!-- [공통 네비게이션] -->
+<nav class="app-nav" aria-label="주요 메뉴">
+    <ul class="nav-list">
+        <li><a class="nav-link" href="/home">홈</a></li>
+        <li><a class="nav-link current" href="/rooms">스터디룸</a></li>
+        <li><a class="nav-link" href="/my-info">내 정보</a></li>
+        <li><a class="nav-link" href="/my-reservations">내 예약</a></li>
+        <li><a class="nav-link" href="/my-refunds">내 환불</a></li>
+    </ul>
+</nav>
+
+<!-- [메인 콘텐츠] 스터디룸 목록 화면 -->
+<main class="app-main">
+    <!-- 본문 타이틀 -->
+    <section class="page-heading">
+        <p class="eyebrow">STUDY ROOMS</p>
+        <h1>스터디룸 목록</h1>
+        <p>예약할 스터디룸들의 수용 인원과 이용료를 확인해 주세요.</p>
+    </section>
+
+    <!-- [하얀색 카드 영역] -->
+    <section class="content-section" style="background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 2rem; margin-top: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+        <h3 style="margin-top: 0; margin-bottom: 0; padding-bottom: 1rem; border-bottom: 1px solid #e5e7eb; color: #111827; font-size: 1.125rem;">이용 가능한 스터디룸</h3>
+        <table class="data-table" style="width: 100%; text-align: left; border-collapse: collapse;">
+            <tbody id="room-list-body">
+            <!-- 자바스크립트 Loop를 통해 이곳에 데이터가 동적으로 삽입됩니다. -->
+            </tbody>
+        </table>
+    </section>
+
+    <!-- 하얀 박스 바깥의 홈으로 버튼 -->
+    <div style="text-align: right; margin-top: 1.5rem;">
+        <a href="/home" style="display: inline-block; padding: 0.5rem 1.25rem; border: 1px solid #d1d5db; border-radius: 4px; text-decoration: none; color: #374151; background-color: #ffffff; font-size: 0.875rem; font-weight: 500;">홈으로</a>
+    </div>
+
+    <!-- 🚨 스터디룸 목록 렌더링용 자바스크립트 (중복 제거 완료) -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 1. 서버(Java) 측에서 넘겨준 JSON 문자열 데이터를 그대로 받습니다.
+            let roomsStr = "{{roomsData}}";
+
+// escapeHtml로 인해 변환된 &quot; 등을 원래 따옴표(")로 복원하는 디코딩 함수
+            const txt = document.createElement("textarea");
+            txt.innerHTML = roomsStr;
+            roomsStr = txt.value;
+
+// 데이터를 파싱합니다
+            let rooms = [];
+            try {
+                if (roomsStr !== "" && !roomsStr.includes("{{")) {
+                    rooms = JSON.parse(roomsStr);
+                }
+            } catch (e) {
+                console.error("데이터 파싱 오류:", e);
+            }
+
+            const tbody = document.getElementById('room-list-body');
+
+            if (rooms.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 2rem;">등록된 스터디룸이 없습니다.</td></tr>';
+                return;
+            }
+
+            let htmlContent = '';
+
+            // 2. 배열을 순회하며 HTML 문자열 생성
+            rooms.forEach(function(room) {
+                htmlContent += `
+                <tr style="border-bottom: 1px solid #f3f4f6;">
+                    <td style="padding: 1.5rem 0;">
+                        <strong style="font-size: 1rem; color: #111827;">${room.name}</strong><br>
+                        <span style="font-size: 0.875rem; color: #6b7280; margin-top: 4px; display: inline-block;">스터디룸 번호: ${room.roomId}</span>
+                    </td>
+                    <td style="padding: 1.5rem 0; color: #4b5563; font-size: 0.9375rem;">
+                        수용 인원 <strong style="color: #111827;">${room.capacity}</strong>명
+                    </td>
+                    <td style="padding: 1.5rem 0; color: #4b5563; font-size: 0.9375rem;">
+                        시간당 이용료 <strong style="color: #111827;">${room.hourlyRate}</strong>원
+                    </td>
+                    <td style="padding: 1.5rem 0; text-align: right;">
+                        <a href="/rooms/detail?roomId=${room.roomId}" style="display: inline-block; padding: 0.5rem 1.25rem; border: 1px solid #d1d5db; border-radius: 4px; text-decoration: none; color: #374151; background-color: #ffffff; font-size: 0.875rem; font-weight: 500;">상세 보기</a>
+                    </td>
+                </tr>
+                `;
+            });
+
+            // 3. 완성된 HTML을 tbody에 삽입
+            tbody.innerHTML = htmlContent;
+        });
+    </script>
+</main>
+
+<!-- [공통 풋터] -->
+<footer class="app-footer">
+    <div class="footer-inner">
+        <section class="footer-section">
+            <strong>프로젝트</strong>
+            <div class="footer-links">
+                <a href="https://github.com/heebaek200/study_room_reservation" target="_blank" rel="noopener noreferrer">GitHub 저장소</a>
+                <a href="https://github.com/heebaek200/study_room_reservation/wiki" target="_blank" rel="noopener noreferrer">Wiki 홈</a>
+            </div>
+        </section>
+        <section class="footer-section">
+            <strong>설계 문서</strong>
+            <div class="footer-links">
+                <a href="https://github.com/heebaek200/study_room_reservation/wiki/요구사항-명세서" target="_blank" rel="noopener noreferrer">요구사항 명세서</a>
+                <a href="https://github.com/heebaek200/study_room_reservation/wiki/권한별-기능-매트릭스" target="_blank" rel="noopener noreferrer">권한별 기능 매트릭스</a>
+                <a href="https://github.com/heebaek200/study_room_reservation/wiki/데이터베이스-설계서-및-ERD" target="_blank" rel="noopener noreferrer">DB 설계서·ERD</a>
+                <a href="https://github.com/heebaek200/study_room_reservation/wiki/사용자-시나리오-및-업무-규칙" target="_blank" rel="noopener noreferrer">사용자 시나리오·업무 규칙</a>
+                <a href="https://github.com/heebaek200/study_room_reservation/wiki/작업-분담-및-Issue-목록" target="_blank" rel="noopener noreferrer">작업 분담·Issue 목록</a>
+            </div>
+        </section>
+        <section class="footer-section">
+            <strong>구현 및 검증</strong>
+            <div class="footer-links">
+                <a href="https://heebaek200.github.io/study_room_reservation/" target="_blank" rel="noopener noreferrer">동시성 테스트 결과</a>
+            </div>
+        </section>
+        <p class="footer-copy">Study Room Reservation System</p>
+    </div>
+</footer>
+
 </body>
 </html>
