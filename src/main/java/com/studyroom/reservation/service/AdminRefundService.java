@@ -192,10 +192,11 @@ public class AdminRefundService {
                 try {
                     connection.rollback();
                 } catch (SQLException rollbackException) {
-                    // Rollback 오류가 원래 오류를 덮어쓰지 않도록 보존합니다.
-                    e.addSuppressed(rollbackException);
+                    // 기존 프로젝트 방식에 맞춰 Rollback 오류만 출력합니다.
+                    rollbackException.printStackTrace();
                 }
 
+                // 최초 발생한 원래 예외를 유지합니다.
                 throw e;
             }
         }
