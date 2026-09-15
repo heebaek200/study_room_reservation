@@ -5,6 +5,7 @@ import com.studyroom.reservation.exception.BusinessException;
 import com.studyroom.reservation.handler.AuthHandler;
 import com.studyroom.reservation.handler.HomeHandler;
 import com.studyroom.reservation.handler.UserHandler;
+import com.studyroom.reservation.handler.StaticFileHandler;
 import com.studyroom.reservation.service.AuthService;
 import com.studyroom.reservation.service.JdbcAuthService;
 import com.studyroom.reservation.service.ReservationCreateService;
@@ -20,7 +21,6 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.util.concurrent.Executors;
 
@@ -84,6 +84,9 @@ public final class Main {
                         reservationCreateService
                 );
 
+        StaticFileHandler staticFileHandler =
+                new StaticFileHandler();
+
         HttpServer server = HttpServer.create(
                 new InetSocketAddress(PORT),
                 0
@@ -124,6 +127,18 @@ public final class Main {
         );
 
         /*
+         * #24가 병합되기 전까지 사용하는 임시 스터디룸 화면 ~
+         */
+        server.createContext(
+                "/rooms",
+                exchange -> handleRooms(
+                        exchange,
+                        authService
+                )
+        );
+        // ~ 이상 #24가 병합되면 삭제
+
+        /*
          * 아래 라우터는 담당 GUI Issue가 main에 병합된 뒤 활성화합니다.
          *
          * // 스터디룸
@@ -138,15 +153,12 @@ public final class Main {
          * server.createContext("/my-refunds", refundHandler);
          * server.createContext("/admin/reservations", refundHandler);
          * server.createContext("/admin/refunds", refundHandler);
-         *
-         * // 정적 파일
-         * server.createContext("/css/", staticFileHandler);
          */
 
-        // 공통 CSS
+        // 정적 파일
         server.createContext(
-                "/css/common.css",
-                Main::sendCommonCss
+                "/css/",
+                staticFileHandler
         );
 
         /*
@@ -263,53 +275,6 @@ public final class Main {
                     exchange,
                     "/login"
             );
-        }
-    }
-
-    /**
-     * 공통 CSS 파일을 반환합니다.
-     */
-    private static void sendCommonCss(
-            HttpExchange exchange
-    ) throws IOException {
-        String resourcePath =
-                "/static/css/common.css";
-
-        if (!"GET".equalsIgnoreCase(
-                exchange.getRequestMethod()
-        )) {
-            exchange.sendResponseHeaders(405, -1);
-            exchange.close();
-            return;
-        }
-
-        try (InputStream inputStream =
-                     Main.class.getResourceAsStream(
-                             resourcePath
-                     )) {
-            if (inputStream == null) {
-                exchange.sendResponseHeaders(404, -1);
-                return;
-            }
-
-            byte[] responseBody =
-                    inputStream.readAllBytes();
-
-            exchange.getResponseHeaders().set(
-                    "Content-Type",
-                    "text/css; charset=UTF-8"
-            );
-
-            exchange.sendResponseHeaders(
-                    200,
-                    responseBody.length
-            );
-
-            exchange.getResponseBody().write(
-                    responseBody
-            );
-        } finally {
-            exchange.close();
         }
     }
 }
