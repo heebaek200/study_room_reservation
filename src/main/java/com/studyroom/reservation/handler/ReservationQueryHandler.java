@@ -30,7 +30,11 @@ public final class ReservationQueryHandler implements HttpHandler {
 
     // 이 핸들러가 응답할 경로. Main.java에서 server.createContext("/my-reservations", ...)로
     // 등록될 예정이라, 여기서도 같은 문자열로 맞춰서 "이 경로가 맞는 요청인가"를 검사할 때 씁니다.
+    // (Issue #29에서 확정한 라우팅: 목록 "/my-reservations", 상세 "/my-reservations/detail?reservationId=")
     private static final String QUERY_PATH = "/my-reservations";
+
+    // 예약 상세 조회 경로. "/my-reservations" 컨텍스트 하위 경로라서 같은 context 등록으로 함께 들어옵니다.
+    private static final String DETAIL_PATH = "/my-reservations/detail";
 
     // 로그인이 안 되어 있을 때 돌려보낼 경로.
     private static final String LOGIN_PATH = "/login";
@@ -71,9 +75,12 @@ public final class ReservationQueryHandler implements HttpHandler {
         String path = exchange.getRequestURI().getPath();
         String method = exchange.getRequestMethod();
 
-        // ① 경로 검사: 이 핸들러가 담당하는 경로가 아니면 404.
+        // ① 경로 검사: 이 핸들러가 담당하는 경로(목록 또는 상세)가 아니면 404.
         // (return을 빼먹으면 아래 로직이 이어서 실행돼버리니 반드시 return으로 끝내야 함)
-        if (!path.equals(QUERY_PATH)) {
+        boolean isListPath = QUERY_PATH.equals(path);
+        boolean isDetailPath = DETAIL_PATH.equals(path);
+
+        if (!isListPath && !isDetailPath) {
             sendMessage(exchange, 404, "요청한 페이지를 찾을 수 없습니다.");
             return;
         }
@@ -103,19 +110,19 @@ public final class ReservationQueryHandler implements HttpHandler {
             return;
         }
 
-        // ⑤ 목록/상세 분기: 쿼리스트링에 id가 있으면 상세, 없으면 목록.
-        // 예) /my-reservations         -> 목록
-        //     /my-reservations?id=5    -> 5번 예약 상세
-        Map<String, String> query = HttpRequestUtil.parseQuery(exchange);
-        String idValue = query.get("id");
-
+        // ⑤ 목록/상세 분기: 경로 자체로 구분합니다.
+        // 예) /my-reservations                              -> 목록
+        //     /my-reservations/detail?reservationId=5        -> 5번 예약 상세
         // parseReservationId(등)에서 BusinessException이 날 수 있으므로 여기서 한 번에 감싸서
         // 400 안내 화면으로 응답합니다. (ReservationCreateHandler.handle()과 동일한 패턴)
         try {
-            if (idValue == null || idValue.isBlank()) {
+            if (isListPath) {
                 handleList(exchange, session);
             } else {
-                handleDetail(exchange, session, idValue);
+                Map<String, String> query = HttpRequestUtil.parseQuery(exchange);
+                String reservationIdValue = query.get("reservationId");
+
+                handleDetail(exchange, session, reservationIdValue);
             }
         } catch (BusinessException e) {
             sendMessage(exchange, 400, e.getMessage());
@@ -138,12 +145,12 @@ public final class ReservationQueryHandler implements HttpHandler {
     }
 
     /**
-     * 예약 번호(id)로 상세 정보를 조회해서 화면에 표시합니다.
+     * 예약 번호(reservationId)로 상세 정보를 조회해서 화면에 표시합니다.
      * 본인의 예약이 아니면(다른 회원 것이거나 존재하지 않으면) 접근을 차단합니다.
      */
-    private void handleDetail(HttpExchange exchange, LoginSession session, String idValue) throws IOException {
-        // 쿼리스트링으로 들어온 문자열(id)을 숫자로 변환. 잘못된 값이면 400 안내.
-        long reservationId = parseReservationId(idValue);
+    private void handleDetail(HttpExchange exchange, LoginSession session, String reservationIdValue) throws IOException {
+        // 쿼리스트링으로 들어온 문자열(reservationId)을 숫자로 변환. 없거나 잘못된 값이면 400 안내.
+        long reservationId = parseReservationId(reservationIdValue);
 
         // getReservationDetail(reservationId, 로그인한 회원 id, role)
         // -> 서비스 내부에서 role이 USER면 findByIdAndUserId로 조회하므로,
@@ -186,7 +193,7 @@ public final class ReservationQueryHandler implements HttpHandler {
                         <td>%s</td>
                         <td>%s</td>
                         <td>%s</td>
-                        <td><a href="/my-reservations?id=%d">상세보기</a></td>
+                        <td><a href="/my-reservations/detail?reservationId=%d">상세보기</a></td>
                     </tr>
                     """.formatted(
                     reservation.getReservationId(),
@@ -289,9 +296,13 @@ public final class ReservationQueryHandler implements HttpHandler {
         };
     }
 
-    // 쿼리스트링의 id 값을 양의 정수로 변환.
-    // 형식이 잘못되면 BusinessException을 던지고, handle()의 try/catch에서 400으로 응답합니다.
+    // 쿼리스트링의 reservationId 값을 양의 정수로 변환.
+    // 값이 없거나 형식이 잘못되면 BusinessException을 던지고, handle()의 try/catch에서 400으로 응답합니다.
     private long parseReservationId(String value) {
+        if (value == null || value.isBlank()) {
+            throw new BusinessException("예약 번호를 입력해 주세요.");
+        }
+
         try {
             long reservationId = Long.parseLong(value);
 

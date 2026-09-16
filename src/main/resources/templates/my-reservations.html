@@ -106,8 +106,8 @@
         Java 쪽에서 미리 만들어둔 HTML 문자열(content)이 이 자리에 그대로 삽입됩니다.
 
         content는 상황에 따라 둘 중 하나입니다.
-        - 목록 조회(GET slash my-reservations)              -> buildListContent가 만든 table 문자열
-        - 상세 조회(GET slash my-reservations물음표id=5)   -> buildDetailContent가 만든 article/dl 문자열
+        - 목록 조회(GET slash my-reservations)                                     -> buildListContent가 만든 table 문자열
+        - 상세 조회(GET slash my-reservations slash detail 물음표reservationId=5)  -> buildDetailContent가 만든 article/dl 문자열
 
         주의: 이 템플릿은 중괄호 두 개짜리 치환(HttpResponseUtil.sendTemplate) 방식이 아니라
         Java의 String.formatted 방식을 사용합니다.
