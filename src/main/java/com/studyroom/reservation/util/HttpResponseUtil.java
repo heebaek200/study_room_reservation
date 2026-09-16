@@ -68,68 +68,114 @@ public final class HttpResponseUtil {
             Map<String, String> htmlFragments
     ) throws IOException {
 
-        String resourcePath = "/templates/" + fileName;
+        String html;
+
+        try {
+            html = loadTemplateResource(fileName);
+        } catch (IOException e) {
+            exchange.sendResponseHeaders(404, -1);
+            exchange.close();
+            return;
+        }
+
+        // 공통 컴포넌트 등의 HTML 조각은 escape하지 않고 삽입합니다.
+        for (Map.Entry<String, String> entry
+                : htmlFragments.entrySet()) {
+
+            String placeholder =
+                    "{{" + entry.getKey() + "}}";
+
+            html = html.replace(
+                    placeholder,
+                    entry.getValue() == null
+                            ? ""
+                            : entry.getValue()
+            );
+        }
+
+        // 일반 문자열은 HTML 특수문자를 변환한 뒤 치환합니다.
+        for (Map.Entry<String, String> entry
+                : values.entrySet()) {
+
+            String placeholder =
+                    "{{" + entry.getKey() + "}}";
+
+            html = html.replace(
+                    placeholder,
+                    escapeHtml(entry.getValue())
+            );
+        }
+
+        byte[] responseBody =
+                html.getBytes(StandardCharsets.UTF_8);
+
+        exchange.getResponseHeaders().set(
+                "Content-Type",
+                "text/html; charset=UTF-8"
+        );
+
+        exchange.sendResponseHeaders(
+                200,
+                responseBody.length
+        );
+
+        try {
+            exchange.getResponseBody().write(responseBody);
+        } finally {
+            exchange.close();
+        }
+    }
+
+    /**
+     * components 디렉터리의 공통 HTML fragment를 읽어 반환합니다.
+     * 헤더, 내비게이션, 푸터처럼 여러 화면에서 재사용하는
+     * HTML 조각을 페이지 템플릿에 삽입할 때 사용합니다.
+     *
+     * @param fileName fragment HTML 파일명
+     * @return fragment HTML 문자열
+     * @throws IOException fragment를 읽지 못한 경우
+     */
+    public static String loadFragment(String fileName)
+            throws IOException {
+
+        return loadTemplateResource(
+                "components/" + fileName
+        );
+    }
+
+    /**
+     * templates 디렉터리 아래의 HTML 리소스를 UTF-8 문자열로 읽습니다.
+     * 일반 페이지 템플릿과 공통 fragment가 동일한 파일 읽기 로직을
+     * 사용할 수 있도록 내부 공통 기능으로 제공합니다.
+     *
+     * @param resourcePath templates 기준 상대 경로
+     * @return 읽어 온 HTML 문자열
+     * @throws IOException HTML 리소스를 찾지 못하거나 읽지 못한 경우
+     */
+    private static String loadTemplateResource(
+            String resourcePath
+    ) throws IOException {
+
+        String fullPath =
+                "/templates/" + resourcePath;
 
         try (InputStream inputStream =
                      HttpResponseUtil.class.getResourceAsStream(
-                             resourcePath
+                             fullPath
                      )) {
 
             if (inputStream == null) {
-                exchange.sendResponseHeaders(404, -1);
-                return;
+                throw new IOException(
+                        "템플릿 파일을 찾을 수 없습니다: "
+                                + fullPath
+                );
             }
 
-            String html = new String(
+            // 리소스 전체를 UTF-8 문자열로 변환
+            return new String(
                     inputStream.readAllBytes(),
                     StandardCharsets.UTF_8
             );
-
-            // 일반 문자열은 HTML 특수문자를 변환한 뒤 치환합니다.
-            for (Map.Entry<String, String> entry
-                    : values.entrySet()) {
-
-                String placeholder =
-                        "{{" + entry.getKey() + "}}";
-
-                html = html.replace(
-                        placeholder,
-                        escapeHtml(entry.getValue())
-                );
-            }
-
-            // 서버에서 생성한 HTML 조각은 escape하지 않고 치환합니다.
-            for (Map.Entry<String, String> entry
-                    : htmlFragments.entrySet()) {
-
-                String placeholder =
-                        "{{" + entry.getKey() + "}}";
-
-                html = html.replace(
-                        placeholder,
-                        entry.getValue() == null
-                                ? ""
-                                : entry.getValue()
-                );
-            }
-
-            byte[] responseBody =
-                    html.getBytes(StandardCharsets.UTF_8);
-
-            exchange.getResponseHeaders().set(
-                    "Content-Type",
-                    "text/html; charset=UTF-8"
-            );
-
-            exchange.sendResponseHeaders(
-                    200,
-                    responseBody.length
-            );
-
-            exchange.getResponseBody().write(responseBody);
-
-        } finally {
-            exchange.close();
         }
     }
 
