@@ -2,6 +2,7 @@ package com.studyroom.reservation.handler;
 
 import com.studyroom.reservation.dto.Reservation;
 import com.studyroom.reservation.dto.StudyRoom;
+import com.studyroom.reservation.enums.ReservationStatus;
 import com.studyroom.reservation.enums.UserRole;
 import com.studyroom.reservation.exception.BusinessException;
 import com.studyroom.reservation.service.AuthService;
@@ -193,15 +194,17 @@ public final class ReservationQueryHandler implements HttpHandler {
                         <td>%s</td>
                         <td>%s</td>
                         <td>%s</td>
-                        <td><a href="/my-reservations/detail?reservationId=%d">상세보기</a></td>
+                        <td>%s</td>
+                        <td>%s</td>
                     </tr>
                     """.formatted(
                     reservation.getReservationId(),
                     escapeHtml(roomName),
                     formatDateTime(reservation.getStartTime()),
                     formatDateTime(reservation.getEndTime()),
+                    escapeHtml(formatPrice(reservation.getTotalPrice())),
                     escapeHtml(statusLabel(reservation)),
-                    reservation.getReservationId()
+                    buildActionCell(reservation)
             ));
         }
 
@@ -213,8 +216,9 @@ public final class ReservationQueryHandler implements HttpHandler {
                             <th>스터디룸</th>
                             <th>시작 일시</th>
                             <th>종료 일시</th>
+                            <th>이용 금액</th>
                             <th>상태</th>
-                            <th></th>
+                            <th>관리</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -222,6 +226,29 @@ public final class ReservationQueryHandler implements HttpHandler {
                     </tbody>
                 </table>
                 """.formatted(rows.toString());
+    }
+
+    /**
+     * 목록의 "관리" 칸을 만듭니다. 상세보기 링크는 항상 표시하고,
+     * CONFIRMED 상태일 때만 예약 취소 버튼(Issue #30)을 추가로 보여줍니다.
+     */
+    private String buildActionCell(Reservation reservation) {
+        String detailLink = """
+                <a href="/my-reservations/detail?reservationId=%d">상세보기</a>
+                """.formatted(reservation.getReservationId());
+
+        if (reservation.getStatus() != ReservationStatus.CONFIRMED) {
+            return detailLink;
+        }
+
+        String cancelForm = """
+                <form action="/reservations/cancel" method="post">
+                    <input type="hidden" name="reservationId" value="%d">
+                    <button type="submit">예약 취소</button>
+                </form>
+                """.formatted(reservation.getReservationId());
+
+        return detailLink + cancelForm;
     }
 
     /**
@@ -274,8 +301,7 @@ public final class ReservationQueryHandler implements HttpHandler {
         return value.format(DATE_TIME_FORMATTER);
     }
 
-    // 금액 표시. MemberReservationQueryDAO가 아직 totalPrice를 채워주지 않으므로(주석 처리됨)
-    // null이 들어올 수 있음 -> 화면이 깨지지 않도록 "-"로 방어.
+    // 금액 표시. totalPrice가 null인 예외 상황에도 화면이 깨지지 않도록 "-"로 방어.
     private String formatPrice(BigDecimal price) {
         if (price == null) {
             return "-";
