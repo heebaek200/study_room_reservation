@@ -225,7 +225,9 @@ public final class Main {
     }
 
     /**
-     * 로그인 상태에 따라 로그인 또는 공통 홈으로 이동합니다.
+     * 루트 경로 요청을 처리합니다.
+     * 정확한 "/" 경로만 허용하며, 그 외 경로는 공통 404 화면으로 응답합니다.
+     * 정상적인 GET 요청은 로그인 상태에 따라 홈 또는 로그인 화면으로 이동시킵니다.
      */
     private static void handleRoot(
             HttpExchange exchange,
@@ -233,17 +235,27 @@ public final class Main {
     ) throws IOException {
         String path = exchange.getRequestURI().getPath();
 
+        // 등록되지 않은 주소는 공통 404 오류 화면으로 처리합니다.
         if (!"/".equals(path)) {
-            exchange.sendResponseHeaders(404, -1);
-            exchange.close();
+            HttpResponseUtil.sendError(
+                    exchange,
+                    404,
+                    "페이지를 찾을 수 없습니다.",
+                    "요청한 주소가 존재하지 않습니다."
+            );
             return;
         }
 
+        // 루트 경로에서는 GET 요청만 허용합니다.
         if (!"GET".equalsIgnoreCase(
                 exchange.getRequestMethod()
         )) {
-            exchange.sendResponseHeaders(405, -1);
-            exchange.close();
+            HttpResponseUtil.sendError(
+                    exchange,
+                    405,
+                    "지원하지 않는 요청입니다.",
+                    "현재 주소에서는 사용할 수 없는 요청 방식입니다."
+            );
             return;
         }
 

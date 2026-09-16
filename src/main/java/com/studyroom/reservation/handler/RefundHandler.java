@@ -88,18 +88,25 @@ public final class RefundHandler implements HttpHandler {
                 return;
             }
 
-            sendMessage(
+            HttpResponseUtil.sendError(
                     exchange,
                     404,
+                    "페이지를 찾을 수 없습니다.",
                     "요청한 페이지를 찾을 수 없습니다."
             );
 
         } catch (BusinessException e) {
-            sendMessage(exchange, 400, e.getMessage());
+            HttpResponseUtil.sendError(
+                    exchange,
+                    400,
+                    "요청을 처리할 수 없습니다.",
+                    e.getMessage()
+            );
         } catch (SQLException e) {
-            sendMessage(
+            HttpResponseUtil.sendError(
                     exchange,
                     500,
+                    "오류가 발생했습니다.",
                     "환불 관련 요청 처리 중 오류가 발생했습니다."
             );
         }
@@ -626,30 +633,4 @@ public final class RefundHandler implements HttpHandler {
         };
     }
 
-
-    private void sendMessage(
-            HttpExchange exchange,
-            int statusCode,
-            String message
-    ) throws IOException {
-
-        byte[] responseBody =
-                defaultString(message).getBytes(
-                        StandardCharsets.UTF_8
-                );
-
-        try {
-            exchange.getResponseHeaders().set(
-                    "Content-Type",
-                    "text/plain; charset=UTF-8"
-            );
-            exchange.sendResponseHeaders(
-                    statusCode,
-                    responseBody.length
-            );
-            exchange.getResponseBody().write(responseBody);
-        } finally {
-            exchange.close();
-        }
-    }
 }

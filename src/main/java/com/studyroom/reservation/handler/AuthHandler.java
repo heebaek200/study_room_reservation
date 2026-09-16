@@ -91,12 +91,27 @@ public final class AuthHandler implements HttpHandler {
                 return;
             }
 
-            sendMessage(exchange, 404, "요청한 페이지를 찾을 수 없습니다.");
+            HttpResponseUtil.sendError(
+                    exchange,
+                    404,
+                    "페이지를 찾을 수 없습니다.",
+                    "요청한 페이지를 찾을 수 없습니다."
+            );
         } catch (BusinessException e) {
             // BusinessException 메시지에는 평문 비밀번호가 포함되지 않아야 합니다.
-            sendMessage(exchange, 400, e.getMessage());
+            HttpResponseUtil.sendError(
+                    exchange,
+                    400,
+                    "요청을 처리할 수 없습니다.",
+                    e.getMessage()
+            );
         } catch (Exception e) {
-            sendMessage(exchange, 500, "요청 처리 중 오류가 발생했습니다.");
+            HttpResponseUtil.sendError(
+                    exchange,
+                    500,
+                    "오류가 발생했습니다.",
+                    "요청 처리 중 오류가 발생했습니다."
+            );
         }
     }
 
@@ -231,71 +246,5 @@ public final class AuthHandler implements HttpHandler {
      */
     private String decode(String value) {
         return URLDecoder.decode(value, StandardCharsets.UTF_8);
-    }
-
-    /**
-     * 처리 결과를 간단한 HTML 문서로 만들어 응답합니다.
-     * 메시지는 HTML 특수문자를 변환하여 그대로 태그로 실행되지 않게 합니다.
-     * 응답 본문은 UTF-8 형식으로 전송합니다.
-     *
-     * @param exchange 현재 HTTP 요청과 응답
-     * @param statusCode HTTP 상태 코드
-     * @param message 사용자에게 표시할 메시지
-     * @throws IOException 응답을 전송하지 못한 경우
-     */
-    private void sendMessage(
-            HttpExchange exchange,
-            int statusCode,
-            String message
-    ) throws IOException {
-        String html = """
-                <!DOCTYPE html>
-                <html lang="ko">
-                <head>
-                    <meta charset="UTF-8">
-                    <title>처리 결과</title>
-                </head>
-                <body>
-                    <h1>처리 결과</h1>
-                    <p>%s</p>
-                    <p><a href="/login">로그인</a></p>
-                    <p><a href="/signup">회원가입</a></p>
-                </body>
-                </html>
-                """.formatted(escapeHtml(message));
-
-        byte[] responseBody = html.getBytes(StandardCharsets.UTF_8);
-
-        try {
-            exchange.getResponseHeaders().set(
-                    "Content-Type",
-                    "text/html; charset=UTF-8"
-            );
-            exchange.sendResponseHeaders(statusCode, responseBody.length);
-            exchange.getResponseBody().write(responseBody);
-        } finally {
-            exchange.close();
-        }
-    }
-
-    /**
-     * 메시지에 포함된 HTML 특수문자를 안전한 문자열로 변환합니다.
-     * 오류 메시지가 HTML 태그나 스크립트로 해석되는 것을 방지합니다.
-     * null 메시지는 빈 문자열로 처리합니다.
-     *
-     * @param value 변환할 문자열
-     * @return HTML 특수문자가 변환된 문자열
-     */
-    private String escapeHtml(String value) {
-        if (value == null) {
-            return "";
-        }
-
-        return value
-                .replace("&", "&amp;")
-                .replace("<", "&lt;")
-                .replace(">", "&gt;")
-                .replace("\"", "&quot;")
-                .replace("'", "&#39;");
     }
 }

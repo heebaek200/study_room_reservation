@@ -58,13 +58,28 @@ public class UserHandler implements HttpHandler {
                 return;
             }
 
-            sendMessage(exchange, 404, "요청한 페이지를 찾을 수 없습니다.");
+            HttpResponseUtil.sendError(
+                    exchange,
+                    404,
+                    "페이지를 찾을 수 없습니다.",
+                    "요청한 페이지를 찾을 수 없습니다."
+            );
         } catch (BusinessException e) {
             // 업무 규칙 위반(로그인 필요, 이름 빈값 등) → 400 안내 화면
-            sendMessage(exchange, 400, e.getMessage());
+            HttpResponseUtil.sendError(
+                    exchange,
+                    400,
+                    "요청을 처리할 수 없습니다.",
+                    e.getMessage()
+            );
         } catch (Exception e) {
             // DB 오류 등 예상 못 한 문제 → 500 안내 화면
-            sendMessage(exchange, 500, "요청 처리 중 오류가 발생했습니다.");
+            HttpResponseUtil.sendError(
+                    exchange,
+                    500,
+                    "오류가 발생했습니다.",
+                    "요청 처리 중 오류가 발생했습니다."
+            );
         }
     }
 
@@ -206,15 +221,13 @@ public class UserHandler implements HttpHandler {
 
         byte[] responseBody = html.getBytes(StandardCharsets.UTF_8);
 
-        try {
+        try (exchange) {
             exchange.getResponseHeaders().set(
                     "Content-Type",
                     "text/html; charset=UTF-8"
             );
             exchange.sendResponseHeaders(200, responseBody.length);
             exchange.getResponseBody().write(responseBody);
-        } finally {
-            exchange.close();
         }
     }
 
@@ -293,43 +306,6 @@ public class UserHandler implements HttpHandler {
                         "userRows", rows
                 )
         );
-    }
-
-    // ---- 아래는 여러 메서드가 공통으로 쓰는 헬퍼 ----
-
-    // 성공/실패와 무관하게 쓰는 간단한 안내 메시지 화면 (404, 400, 500 등에서 사용)
-    private void sendMessage(
-            HttpExchange exchange,
-            int statusCode,
-            String message
-    ) throws IOException {
-        String html = """
-                <!DOCTYPE html>
-                <html lang="ko">
-                <head>
-                    <meta charset="UTF-8">
-                    <title>처리 결과</title>
-                </head>
-                <body>
-                    <h1>처리 결과</h1>
-                    <p>%s</p>
-                    <p><a href="/my-info">내 정보</a></p>
-                </body>
-                </html>
-                """.formatted(escapeHtml(message));
-
-        byte[] responseBody = html.getBytes(StandardCharsets.UTF_8);
-
-        try {
-            exchange.getResponseHeaders().set(
-                    "Content-Type",
-                    "text/html; charset=UTF-8"
-            );
-            exchange.sendResponseHeaders(statusCode, responseBody.length);
-            exchange.getResponseBody().write(responseBody);
-        } finally {
-            exchange.close();
-        }
     }
 
     // HTML 특수문자(<, >, ", ' 등)를 이스케이프해서 XSS(악성 스크립트 삽입)를 방지

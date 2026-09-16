@@ -81,13 +81,23 @@ public final class ReservationQueryHandler implements HttpHandler {
         boolean isDetailPath = DETAIL_PATH.equals(path);
 
         if (!isListPath && !isDetailPath) {
-            sendMessage(exchange, 404, "요청한 페이지를 찾을 수 없습니다.");
+            HttpResponseUtil.sendError(
+                    exchange,
+                    404,
+                    "페이지를 찾을 수 없습니다.",
+                    "요청한 페이지를 찾을 수 없습니다."
+            );
             return;
         }
 
         // ② 메서드 검사: 이 Issue는 "조회"만 다루므로 GET만 허용.
         if (!"GET".equalsIgnoreCase(method)) {
-            sendMessage(exchange, 405, "허용되지 않은 요청 방식입니다.");
+            HttpResponseUtil.sendError(
+                    exchange,
+                    405,
+                    "허용되지 않은 요청 방식입니다.",
+                    "허용되지 않은 요청 방식입니다."
+            );
             return;
         }
 
@@ -106,7 +116,12 @@ public final class ReservationQueryHandler implements HttpHandler {
 
         // ④ 권한 검사: 이 화면은 일반 회원(USER) 전용. 관리자는 /admin/reservations 쪽에서 처리.
         if (session.getRole() != UserRole.USER) {
-            sendMessage(exchange, 403, "일반 회원만 이용할 수 있는 화면입니다.");
+            HttpResponseUtil.sendError(
+                    exchange,
+                    403,
+                    "페이지를 찾을 수 없습니다.",
+                    "일반 회원만 이용할 수 있는 화면입니다."
+            );
             return;
         }
 
@@ -125,7 +140,12 @@ public final class ReservationQueryHandler implements HttpHandler {
                 handleDetail(exchange, session, reservationIdValue);
             }
         } catch (BusinessException e) {
-            sendMessage(exchange, 400, e.getMessage());
+            HttpResponseUtil.sendError(
+                    exchange,
+                    400,
+                    "요청을 처리할 수 없습니다.",
+                    e.getMessage()
+            );
         }
     }
 
@@ -163,7 +183,12 @@ public final class ReservationQueryHandler implements HttpHandler {
         );
 
         if (reservation.isEmpty()) {
-            sendMessage(exchange, 404, "예약을 찾을 수 없거나 접근 권한이 없습니다.");
+            HttpResponseUtil.sendError(
+                    exchange,
+                    404,
+                    "페이지를 찾을 수 없습니다.",
+                    "예약을 찾을 수 없거나 접근 권한이 없습니다."
+            );
             return;
         }
 
@@ -325,7 +350,12 @@ public final class ReservationQueryHandler implements HttpHandler {
 
         try (InputStream inputStream = ReservationQueryHandler.class.getResourceAsStream(resourcePath)) {
             if (inputStream == null) {
-                sendMessage(exchange, 404, "화면 파일을 찾을 수 없습니다.");
+                HttpResponseUtil.sendError(
+                        exchange,
+                        404,
+                        "페이지를 찾을 수 없습니다.",
+                        "화면 파일을 찾을 수 없습니다."
+                );
                 return;
             }
 
