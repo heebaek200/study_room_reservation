@@ -123,8 +123,8 @@ public class MemberReservationQueryDAO {
             reservation.setEndTime(rs.getTimestamp("end_time").toLocalDateTime());
         }
 
-        // DTO에 가격 필드가 있다면 아래처럼 int(정수) 타입으로 꺼내와 세팅.
-        // reservation.setTotalPrice(rs.getInt("total_price"));
+        // total_price는 소수점이 있는 금액이라 int가 아닌 BigDecimal로 꺼내와 세팅.
+        reservation.setTotalPrice(rs.getBigDecimal("total_price"));
 
         return reservation;
     }
