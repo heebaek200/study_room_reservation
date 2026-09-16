@@ -108,28 +108,63 @@ public final class HomeHandler implements HttpHandler {
     /**
      * 권한에 맞는 공통 홈 템플릿을 반환합니다.
      */
+    /**
+     * 로그인 사용자의 권한에 맞는 홈 화면을 반환합니다.
+     * 공통 헤더와 푸터를 불러오고 권한별 내비게이션을 선택하여
+     * 홈 템플릿의 공통 레이아웃 영역에 삽입합니다.
+     */
     private void sendHomeTemplate(
             HttpExchange exchange,
             LoginSession session,
             User user
     ) throws IOException {
+
         String templateName;
+        String navigationName;
         String roleName;
+        String roleClass;
 
         if (session.getRole() == UserRole.ADMIN) {
             templateName = "admin-home.html";
+            navigationName = "nav-admin.html";
             roleName = "관리자";
+            roleClass = "admin";
         } else {
             templateName = "user-home.html";
+            navigationName = "nav-user.html";
             roleName = "일반 회원";
+            roleClass = "";
         }
 
-        HttpResponseUtil.sendTemplate(
+        // 모든 로그인 화면에서 공통으로 사용하는 HTML 조각을 읽습니다.
+        String header =
+                HttpResponseUtil.loadFragment(
+                        "app-header.html"
+                );
+
+        String navigation =
+                HttpResponseUtil.loadFragment(
+                        navigationName
+                );
+
+        String footer =
+                HttpResponseUtil.loadFragment(
+                        "app-footer.html"
+                );
+
+        HttpResponseUtil.sendTemplateWithHtml(
                 exchange,
                 templateName,
                 Map.of(
                         "userName", user.getName(),
-                        "roleName", roleName
+                        "roleName", roleName,
+                        "roleClass", roleClass,
+                        "homeCurrent", "current"
+                ),
+                Map.of(
+                        "header", header,
+                        "navigation", navigation,
+                        "footer", footer
                 )
         );
     }

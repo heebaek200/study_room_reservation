@@ -1,0 +1,30 @@
+<header class="app-header">
+    <div class="header-inner">
+        <a class="app-title" href="/home">
+            스터디룸 예약 관리
+        </a>
+
+        <div class="login-info">
+            <div>
+                <strong>{{userName}}</strong>
+
+                <span class="role-badge {{roleClass}}">
+                    {{roleName}}
+                </span>
+            </div>
+
+            <form
+                    class="logout-form"
+                    action="/logout"
+                    method="post"
+            >
+                <button
+                        class="logout-button"
+                        type="submit"
+                >
+                    로그아웃
+                </button>
+            </form>
+        </div>
+    </div>
+</header>
