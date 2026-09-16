@@ -148,10 +148,17 @@ public final class ReservationQueryHandler implements HttpHandler {
 
                 handleDetail(exchange, session, sessionId, reservationIdValue);
             }
-        } catch (BusinessException | SQLException e) {
+        } catch (BusinessException e) {
             HttpResponseUtil.sendError(
                     exchange,
                     400,
+                    "요청을 처리할 수 없습니다.",
+                    e.getMessage()
+            );
+        } catch (SQLException e) {
+            HttpResponseUtil.sendError(
+                    exchange,
+                    500,
                     "요청을 처리할 수 없습니다.",
                     e.getMessage()
             );

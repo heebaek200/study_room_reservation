@@ -120,7 +120,12 @@ public class ReservationCancelHandler implements HttpHandler {
                         null
                 );
             } catch (SQLException ex) {
-                throw new RuntimeException(ex);
+                HttpResponseUtil.sendError(
+                        exchange,
+                        500,
+                        "오류가 발생했습니다.",
+                        "예약 취소 처리 중 오류가 발생했습니다."
+                );
             }
         } catch (SQLException e) {
             HttpResponseUtil.sendError(
