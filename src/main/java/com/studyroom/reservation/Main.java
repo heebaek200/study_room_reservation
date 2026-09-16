@@ -1,22 +1,13 @@
 package com.studyroom.reservation;
 
-import com.studyroom.reservation.dao.UserDAO;
+import com.studyroom.reservation.dao.*;
+import com.studyroom.reservation.dto.Refund;
 import com.studyroom.reservation.exception.BusinessException;
-import com.studyroom.reservation.handler.AuthHandler;
-import com.studyroom.reservation.handler.HomeHandler;
-import com.studyroom.reservation.handler.UserHandler;
-import com.studyroom.reservation.handler.StaticFileHandler;
-import com.studyroom.reservation.service.AuthService;
-import com.studyroom.reservation.service.JdbcAuthService;
-import com.studyroom.reservation.service.ReservationCreateService;
-import com.studyroom.reservation.service.StudyRoomService;
-import com.studyroom.reservation.service.UserService;
+import com.studyroom.reservation.handler.*;
+import com.studyroom.reservation.service.*;
 import com.studyroom.reservation.util.DatabaseUtil;
 import com.studyroom.reservation.util.HttpRequestUtil;
 import com.studyroom.reservation.util.HttpResponseUtil;
-import com.studyroom.reservation.dao.ReservationCreateDAO;
-import com.studyroom.reservation.dao.StudyRoomDAO;
-import com.studyroom.reservation.handler.ReservationCreateHandler;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 
@@ -46,6 +37,15 @@ public final class Main {
         StudyRoomDAO studyRoomDAO =
                 new StudyRoomDAO();
 
+        AdminReservationQueryDAO adminReservationQueryDAO =
+                new AdminReservationQueryDAO();
+
+        MemberRefundQueryDAO memberRefundQueryDAO =
+                new MemberRefundQueryDAO();
+
+        AdminRefundDAO adminRefundDAO =
+                new AdminRefundDAO();
+
         StudyRoomService studyRoomService =
                 new StudyRoomService(
                         studyRoomDAO,
@@ -57,6 +57,18 @@ public final class Main {
                         authService,
                         userDAO,
                         reservationCreateDAO
+                );
+
+        AdminReservationQueryService adminReservationQueryService =
+                new AdminReservationQueryService(
+                        authService,
+                        adminReservationQueryDAO
+                );
+
+        MemberRefundQueryService memberRefundQueryService =
+                new MemberRefundQueryService(
+                        authService,
+                        memberRefundQueryDAO
                 );
 
         AuthHandler authHandler =
@@ -77,11 +89,26 @@ public final class Main {
         UserHandler userHandler =
                 new UserHandler(userService);
 
+
         ReservationCreateHandler reservationCreateHandler =
                 new ReservationCreateHandler(
                         authService,
                         studyRoomService,
                         reservationCreateService
+                );
+
+        AdminRefundService adminRefundService =
+                new AdminRefundService(
+                        authService,
+                        adminRefundDAO
+                );
+
+        RefundHandler refundHandler =
+                new RefundHandler(
+                        memberRefundQueryService,
+                        adminReservationQueryService,
+                        adminRefundService,
+                        userService
                 );
 
         StaticFileHandler staticFileHandler =
@@ -154,6 +181,11 @@ public final class Main {
          * server.createContext("/admin/reservations", refundHandler);
          * server.createContext("/admin/refunds", refundHandler);
          */
+
+        // 환불 및 관리자 조회
+        server.createContext("/my-refunds", refundHandler);
+        server.createContext("/admin/reservations", refundHandler);
+        server.createContext("/admin/refunds", refundHandler);
 
         // 정적 파일
         server.createContext(
