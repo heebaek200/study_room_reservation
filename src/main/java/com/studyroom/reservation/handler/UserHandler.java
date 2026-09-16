@@ -91,8 +91,6 @@ public class UserHandler implements HttpHandler {
     // my-info.html 템플릿에 이메일·이름 값과 안내 문구(message)를 채워서 응답
     // message가 없으면(null) 안내 문구 자리는 빈 문자열로 채워짐
     private void sendMyInfoPage(HttpExchange exchange, User user, String message) throws IOException {
-        String resourcePath = "/templates/my-info.html";
-
         String header =
                 HttpResponseUtil.loadFragment(
                         "app-header.html"
@@ -226,9 +224,9 @@ public class UserHandler implements HttpHandler {
     private void handleAdminUsers(HttpExchange exchange) throws IOException, SQLException {
         String sessionId = HttpRequestUtil.findCookie(exchange, SESSION_COOKIE_NAME);
 
-        User myUser;
+        User currentUser;
         try {
-            myUser = userService.getMyInfo(sessionId);
+            currentUser = userService.getMyInfo(sessionId);
         } catch (BusinessException e) {
             // 로그인 안 된 상태로 접근하면 로그인 화면으로 보냄
             HttpResponseUtil.redirect(exchange, "/login");
@@ -251,13 +249,11 @@ public class UserHandler implements HttpHandler {
             ));
         }
 
-        sendUsersPage(exchange, myUser, rows.toString());
+        sendUsersPage(exchange, currentUser, rows.toString());
     }
 
     // admin-users.html 템플릿의 <tbody> 자리에 완성된 회원 목록 행(rows)을 채워서 응답
     private void sendUsersPage(HttpExchange exchange, User user, String rows) throws IOException {
-        String resourcePath = "/templates/admin-users.html";
-
         String header =
                 HttpResponseUtil.loadFragment(
                         "app-header.html"

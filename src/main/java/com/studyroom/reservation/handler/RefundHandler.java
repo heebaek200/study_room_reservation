@@ -114,11 +114,6 @@ public final class RefundHandler implements HttpHandler {
 
         String sessionId = findSessionId(exchange);
 
-        List<Refund> refunds =
-                memberRefundQueryService.getMyRefunds(sessionId);
-
-        Map<String, String> values = new HashMap<>();
-
         User currentUser;
         try {
             currentUser =
@@ -132,6 +127,11 @@ public final class RefundHandler implements HttpHandler {
             );
             return;
         }
+
+        List<Refund> refunds =
+                memberRefundQueryService.getMyRefunds(sessionId);
+
+        Map<String, String> values = new HashMap<>();
 
         values.put("userName", currentUser.getName());
         values.put("roleName", "일반 회원");
@@ -175,6 +175,21 @@ public final class RefundHandler implements HttpHandler {
     ) throws IOException, SQLException {
 
         String sessionId = findSessionId(exchange);
+
+        User currentUser;
+        try {
+            currentUser =
+                    userService.getMyInfo(
+                            sessionId
+                    );
+        } catch (BusinessException e) {
+            HttpResponseUtil.redirect(
+                    exchange,
+                    "/login"
+            );
+            return;
+        }
+
         Map<String, String> query =
                 HttpRequestUtil.parseQuery(exchange);
 
@@ -207,20 +222,6 @@ public final class RefundHandler implements HttpHandler {
 
 
         Map<String, String> values = new HashMap<>();
-
-        User currentUser;
-        try {
-            currentUser =
-                    userService.getMyInfo(
-                            sessionId
-                    );
-        } catch (BusinessException e) {
-            HttpResponseUtil.redirect(
-                    exchange,
-                    "/login"
-            );
-            return;
-        }
 
         values.put("userName", currentUser.getName());
         values.put("roleName", "관리자");
@@ -258,6 +259,20 @@ public final class RefundHandler implements HttpHandler {
     ) throws IOException, SQLException {
 
         String sessionId = findSessionId(exchange);
+
+        User currentUser;
+        try {
+            currentUser =
+                    userService.getMyInfo(
+                            sessionId
+                    );
+        } catch (BusinessException e) {
+            HttpResponseUtil.redirect(
+                    exchange,
+                    "/login"
+            );
+            return;
+        }
 
         Map<String, String> query =
                 HttpRequestUtil.parseQuery(exchange);
@@ -304,20 +319,6 @@ public final class RefundHandler implements HttpHandler {
 
 
         Map<String, String> values = new HashMap<>();
-
-        User currentUser;
-        try {
-            currentUser =
-                    userService.getMyInfo(
-                            sessionId
-                    );
-        } catch (BusinessException e) {
-            HttpResponseUtil.redirect(
-                    exchange,
-                    "/login"
-            );
-            return;
-        }
 
         values.put("userName", currentUser.getName());
         values.put("roleName", "관리자");
