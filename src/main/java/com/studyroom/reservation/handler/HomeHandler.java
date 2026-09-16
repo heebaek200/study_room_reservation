@@ -46,18 +46,20 @@ public final class HomeHandler implements HttpHandler {
         String method = exchange.getRequestMethod();
 
         if (!HOME_PATH.equals(path)) {
-            sendMessage(
+            HttpResponseUtil.sendError(
                     exchange,
                     404,
+                    "페이지를 찾을 수 없습니다.",
                     "요청한 페이지를 찾을 수 없습니다."
             );
             return;
         }
 
         if (!"GET".equalsIgnoreCase(method)) {
-            sendMessage(
+            HttpResponseUtil.sendError(
                     exchange,
                     405,
+                    "요청 방식을 찾을 수 없습니다.",
                     "허용되지 않은 요청 방식입니다."
             );
             return;
@@ -98,9 +100,10 @@ public final class HomeHandler implements HttpHandler {
                     LOGIN_PATH
             );
         } catch (SQLException e) {
-            sendMessage(
+            HttpResponseUtil.sendError(
                     exchange,
                     500,
+                    "오류가 발생했습니다.",
                     "회원 정보를 불러오지 못했습니다."
             );
         }
@@ -184,30 +187,4 @@ public final class HomeHandler implements HttpHandler {
         );
     }
 
-    /**
-     * 오류 상태와 메시지를 단순 텍스트로 반환합니다.
-     */
-    private void sendMessage(
-            HttpExchange exchange,
-            int statusCode,
-            String message
-    ) throws IOException {
-        byte[] responseBody = message.getBytes(
-                StandardCharsets.UTF_8
-        );
-
-        try {
-            exchange.getResponseHeaders().set(
-                    "Content-Type",
-                    "text/plain; charset=UTF-8"
-            );
-            exchange.sendResponseHeaders(
-                    statusCode,
-                    responseBody.length
-            );
-            exchange.getResponseBody().write(responseBody);
-        } finally {
-            exchange.close();
-        }
-    }
 }

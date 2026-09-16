@@ -58,13 +58,28 @@ public class UserHandler implements HttpHandler {
                 return;
             }
 
-            sendMessage(exchange, 404, "요청한 페이지를 찾을 수 없습니다.");
+            HttpResponseUtil.sendError(
+                    exchange,
+                    404,
+                    "페이지를 찾을 수 없습니다.",
+                    "요청한 페이지를 찾을 수 없습니다."
+            );
         } catch (BusinessException e) {
             // 업무 규칙 위반(로그인 필요, 이름 빈값 등) → 400 안내 화면
-            sendMessage(exchange, 400, e.getMessage());
+            HttpResponseUtil.sendError(
+                    exchange,
+                    400,
+                    "요청을 처리할 수 없습니다.",
+                    e.getMessage()
+            );
         } catch (Exception e) {
             // DB 오류 등 예상 못 한 문제 → 500 안내 화면
-            sendMessage(exchange, 500, "요청 처리 중 오류가 발생했습니다.");
+            HttpResponseUtil.sendError(
+                    exchange,
+                    500,
+                    "오류가 발생했습니다.",
+                    "요청 처리 중 오류가 발생했습니다."
+            );
         }
     }
 
@@ -91,41 +106,52 @@ public class UserHandler implements HttpHandler {
     // my-info.html 템플릿에 이메일·이름 값과 안내 문구(message)를 채워서 응답
     // message가 없으면(null) 안내 문구 자리는 빈 문자열로 채워짐
     private void sendMyInfoPage(HttpExchange exchange, User user, String message) throws IOException {
-        String resourcePath = "/templates/my-info.html";
+        String header =
+                HttpResponseUtil.loadFragment(
+                        "app-header.html"
+                );
 
-        try (InputStream inputStream =
-                     UserHandler.class.getResourceAsStream(resourcePath)) {
-            if (inputStream == null) {
-                sendMessage(exchange, 404, "화면 파일을 찾을 수 없습니다.");
-                return;
-            }
+        String navigation =
+                HttpResponseUtil.loadFragment(
+                        "nav-user.html"
+                );
 
-            String template = new String(
-                    inputStream.readAllBytes(),
-                    StandardCharsets.UTF_8
-            );
+        String footer =
+                HttpResponseUtil.loadFragment(
+                        "app-footer.html"
+                );
 
-            String notice = (message == null || message.isBlank())
-                    ? ""
-                    : "<p>" + escapeHtml(message) + "</p>";
+        Map<String, String> values = new HashMap<>();
 
-            String html = template.formatted(
-                    notice,
-                    escapeHtml(user.getEmail()),
-                    escapeHtml(user.getName())
-            );
+        values.put("userName", user.getName());
+        values.put("roleName", "일반 회원");
+        values.put("roleClass", "");
 
-            byte[] responseBody = html.getBytes(StandardCharsets.UTF_8);
+        values.put("homeCurrent", "");
+        values.put("roomsCurrent", "");
+        values.put("myInfoCurrent", "current");
+        values.put("myReservationsCurrent", "");
+        values.put("myRefundsCurrent", "");
 
-            exchange.getResponseHeaders().set(
-                    "Content-Type",
-                    "text/html; charset=UTF-8"
-            );
-            exchange.sendResponseHeaders(200, responseBody.length);
-            exchange.getResponseBody().write(responseBody);
-        } finally {
-            exchange.close();
-        }
+        values.put("email", user.getEmail());
+        values.put("name", user.getName());
+        values.put(
+                "message",
+                message == null
+                        ? ""
+                        : message
+        );
+
+        HttpResponseUtil.sendTemplateWithHtml(
+                exchange,
+                "my-info.html",
+                values,
+                Map.of(
+                        "header", header,
+                        "navigation", navigation,
+                        "footer", footer
+                )
+        );
     }
 
     // 3. POST /my-info - 폼으로 제출한 새 이름으로 수정. 성공하면 /my-info로 redirect(PRG 패턴),
@@ -195,15 +221,13 @@ public class UserHandler implements HttpHandler {
 
         byte[] responseBody = html.getBytes(StandardCharsets.UTF_8);
 
-        try {
+        try (exchange) {
             exchange.getResponseHeaders().set(
                     "Content-Type",
                     "text/html; charset=UTF-8"
             );
             exchange.sendResponseHeaders(200, responseBody.length);
             exchange.getResponseBody().write(responseBody);
-        } finally {
-            exchange.close();
         }
     }
 
@@ -212,6 +236,15 @@ public class UserHandler implements HttpHandler {
     //     handle()의 바깥 catch가 자동으로 400 안내 화면으로 처리해줌)
     private void handleAdminUsers(HttpExchange exchange) throws IOException, SQLException {
         String sessionId = HttpRequestUtil.findCookie(exchange, SESSION_COOKIE_NAME);
+
+        User currentUser;
+        try {
+            currentUser = userService.getMyInfo(sessionId);
+        } catch (BusinessException e) {
+            // 로그인 안 된 상태로 접근하면 로그인 화면으로 보냄
+            HttpResponseUtil.redirect(exchange, "/login");
+            return;
+        }
 
         List<User> users = userService.getAllUsers(sessionId);
 
@@ -229,75 +262,50 @@ public class UserHandler implements HttpHandler {
             ));
         }
 
-        sendUsersPage(exchange, rows.toString());
+        sendUsersPage(exchange, currentUser, rows.toString());
     }
 
     // admin-users.html 템플릿의 <tbody> 자리에 완성된 회원 목록 행(rows)을 채워서 응답
-    private void sendUsersPage(HttpExchange exchange, String rows) throws IOException {
-        String resourcePath = "/templates/admin-users.html";
+    private void sendUsersPage(HttpExchange exchange, User user, String rows) throws IOException {
+        String header =
+                HttpResponseUtil.loadFragment(
+                        "app-header.html"
+                );
 
-        try (InputStream inputStream =
-                     UserHandler.class.getResourceAsStream(resourcePath)) {
-            if (inputStream == null) {
-                sendMessage(exchange, 404, "화면 파일을 찾을 수 없습니다.");
-                return;
-            }
+        String navigation =
+                HttpResponseUtil.loadFragment(
+                        "nav-admin.html"
+                );
 
-            String template = new String(
-                    inputStream.readAllBytes(),
-                    StandardCharsets.UTF_8
-            );
+        String footer =
+                HttpResponseUtil.loadFragment(
+                        "app-footer.html"
+                );
 
-            String html = template.formatted(rows);
+        Map<String, String> values = new HashMap<>();
 
-            byte[] responseBody = html.getBytes(StandardCharsets.UTF_8);
+        values.put("userName", user.getName());
+        values.put("roleName", "관리자");
+        values.put("roleClass", "admin");
 
-            exchange.getResponseHeaders().set(
-                    "Content-Type",
-                    "text/html; charset=UTF-8"
-            );
-            exchange.sendResponseHeaders(200, responseBody.length);
-            exchange.getResponseBody().write(responseBody);
-        } finally {
-            exchange.close();
-        }
-    }
+        values.put("homeCurrent", "");
+        values.put("roomsCurrent", "");
+        values.put("adminRoomsCurrent", "");
+        values.put("adminUsersCurrent", "current");
+        values.put("adminReservationsCurrent", "");
+        values.put("adminRefundsCurrent", "");
 
-    // ---- 아래는 여러 메서드가 공통으로 쓰는 헬퍼 ----
-
-    // 성공/실패와 무관하게 쓰는 간단한 안내 메시지 화면 (404, 400, 500 등에서 사용)
-    private void sendMessage(
-            HttpExchange exchange,
-            int statusCode,
-            String message
-    ) throws IOException {
-        String html = """
-                <!DOCTYPE html>
-                <html lang="ko">
-                <head>
-                    <meta charset="UTF-8">
-                    <title>처리 결과</title>
-                </head>
-                <body>
-                    <h1>처리 결과</h1>
-                    <p>%s</p>
-                    <p><a href="/my-info">내 정보</a></p>
-                </body>
-                </html>
-                """.formatted(escapeHtml(message));
-
-        byte[] responseBody = html.getBytes(StandardCharsets.UTF_8);
-
-        try {
-            exchange.getResponseHeaders().set(
-                    "Content-Type",
-                    "text/html; charset=UTF-8"
-            );
-            exchange.sendResponseHeaders(statusCode, responseBody.length);
-            exchange.getResponseBody().write(responseBody);
-        } finally {
-            exchange.close();
-        }
+        HttpResponseUtil.sendTemplateWithHtml(
+                exchange,
+                "admin-users.html",
+                values,
+                Map.of(
+                        "header", header,
+                        "navigation", navigation,
+                        "footer", footer,
+                        "userRows", rows
+                )
+        );
     }
 
     // HTML 특수문자(<, >, ", ' 등)를 이스케이프해서 XSS(악성 스크립트 삽입)를 방지

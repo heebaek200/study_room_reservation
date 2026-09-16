@@ -1,22 +1,13 @@
 package com.studyroom.reservation;
 
-import com.studyroom.reservation.dao.UserDAO;
+import com.studyroom.reservation.dao.*;
+import com.studyroom.reservation.dto.Refund;
 import com.studyroom.reservation.exception.BusinessException;
-import com.studyroom.reservation.handler.AuthHandler;
-import com.studyroom.reservation.handler.HomeHandler;
-import com.studyroom.reservation.handler.UserHandler;
-import com.studyroom.reservation.handler.StaticFileHandler;
-import com.studyroom.reservation.service.AuthService;
-import com.studyroom.reservation.service.JdbcAuthService;
-import com.studyroom.reservation.service.ReservationCreateService;
-import com.studyroom.reservation.service.StudyRoomService;
-import com.studyroom.reservation.service.UserService;
+import com.studyroom.reservation.handler.*;
+import com.studyroom.reservation.service.*;
 import com.studyroom.reservation.util.DatabaseUtil;
 import com.studyroom.reservation.util.HttpRequestUtil;
 import com.studyroom.reservation.util.HttpResponseUtil;
-import com.studyroom.reservation.dao.ReservationCreateDAO;
-import com.studyroom.reservation.dao.StudyRoomDAO;
-import com.studyroom.reservation.handler.ReservationCreateHandler;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 
@@ -46,6 +37,18 @@ public final class Main {
         StudyRoomDAO studyRoomDAO =
                 new StudyRoomDAO();
 
+        AdminReservationQueryDAO adminReservationQueryDAO =
+                new AdminReservationQueryDAO();
+
+        MemberRefundQueryDAO memberRefundQueryDAO =
+                new MemberRefundQueryDAO();
+
+        AdminRefundDAO adminRefundDAO =
+                new AdminRefundDAO();
+
+        MemberReservationQueryDAO memberReservationQueryDAO =
+                new MemberReservationQueryDAO();
+
         StudyRoomService studyRoomService =
                 new StudyRoomService(
                         studyRoomDAO,
@@ -58,6 +61,33 @@ public final class Main {
                         userDAO,
                         reservationCreateDAO
                 );
+
+        AdminReservationQueryService adminReservationQueryService =
+                new AdminReservationQueryService(
+                        authService,
+                        adminReservationQueryDAO
+                );
+
+        MemberRefundQueryService memberRefundQueryService =
+                new MemberRefundQueryService(
+                        authService,
+                        memberRefundQueryDAO
+                );
+
+        ReservationCancelDAO reservationCancelDAO =
+                new ReservationCancelDAO();
+
+        MemberReservationQueryService memberReservationQueryService =
+                new MemberReservationQueryService(
+                        memberReservationQueryDAO
+                );
+
+        ReservationCancelService reservationCancelService =
+                new ReservationCancelService(
+                        authService,
+                        reservationCancelDAO
+                );
+
 
         AuthHandler authHandler =
                 new AuthHandler(authService);
@@ -77,11 +107,50 @@ public final class Main {
         UserHandler userHandler =
                 new UserHandler(userService);
 
+
         ReservationCreateHandler reservationCreateHandler =
                 new ReservationCreateHandler(
                         authService,
                         studyRoomService,
-                        reservationCreateService
+                        reservationCreateService,
+                        userService
+                );
+
+        StudyRoomHandler studyRoomHandler =
+                new StudyRoomHandler(
+                        authService,
+                        studyRoomService,
+                        userService
+                );
+
+        ReservationQueryHandler reservationQueryHandler =
+                new ReservationQueryHandler(
+                        authService,
+                        studyRoomService,
+                        memberReservationQueryService,
+                        userService
+                );
+
+        ReservationCancelHandler reservationCancelHandler =
+                new ReservationCancelHandler(
+                        reservationCancelService,
+                        memberRefundQueryService,
+                        authService,
+                        userService
+                );
+
+        AdminRefundService adminRefundService =
+                new AdminRefundService(
+                        authService,
+                        adminRefundDAO
+                );
+
+        RefundHandler refundHandler =
+                new RefundHandler(
+                        memberRefundQueryService,
+                        adminReservationQueryService,
+                        adminRefundService,
+                        userService
                 );
 
         StaticFileHandler staticFileHandler =
@@ -126,34 +195,19 @@ public final class Main {
                 reservationCreateHandler
         );
 
-        /*
-         * #24가 병합되기 전까지 사용하는 임시 스터디룸 화면 ~
-         */
-        server.createContext(
-                "/rooms",
-                exchange -> handleRooms(
-                        exchange,
-                        authService
-                )
-        );
-        // ~ 이상 #24가 병합되면 삭제
+         // 스터디룸
+        server.createContext("/rooms", studyRoomHandler);
+        server.createContext("/rooms/detail", studyRoomHandler);
+        server.createContext("/admin/rooms", studyRoomHandler);
 
-        /*
-         * 아래 라우터는 담당 GUI Issue가 main에 병합된 뒤 활성화합니다.
-         *
-         * // 스터디룸
-         * server.createContext("/rooms", studyRoomHandler);
-         * server.createContext("/admin/rooms", studyRoomHandler);
-         *
-         * // 예약 조회 및 취소
-         * server.createContext("/my-reservations", reservationQueryHandler);
-         * server.createContext("/reservations/cancel", reservationCancelHandler);
-         *
-         * // 환불 및 관리자 조회
-         * server.createContext("/my-refunds", refundHandler);
-         * server.createContext("/admin/reservations", refundHandler);
-         * server.createContext("/admin/refunds", refundHandler);
-         */
+        // 예약 조회 및 취소
+        server.createContext("/my-reservations", reservationQueryHandler);
+        server.createContext("/reservations/cancel", reservationCancelHandler);
+
+        // 환불 및 관리자 조회
+        server.createContext("/my-refunds", refundHandler);
+        server.createContext("/admin/reservations", refundHandler);
+        server.createContext("/admin/refunds", refundHandler);
 
         // 정적 파일
         server.createContext(
@@ -193,7 +247,9 @@ public final class Main {
     }
 
     /**
-     * 로그인 상태에 따라 로그인 또는 공통 홈으로 이동합니다.
+     * 루트 경로 요청을 처리합니다.
+     * 정확한 "/" 경로만 허용하며, 그 외 경로는 공통 404 화면으로 응답합니다.
+     * 정상적인 GET 요청은 로그인 상태에 따라 홈 또는 로그인 화면으로 이동시킵니다.
      */
     private static void handleRoot(
             HttpExchange exchange,
@@ -201,17 +257,27 @@ public final class Main {
     ) throws IOException {
         String path = exchange.getRequestURI().getPath();
 
+        // 등록되지 않은 주소는 공통 404 오류 화면으로 처리합니다.
         if (!"/".equals(path)) {
-            exchange.sendResponseHeaders(404, -1);
-            exchange.close();
+            HttpResponseUtil.sendError(
+                    exchange,
+                    404,
+                    "페이지를 찾을 수 없습니다.",
+                    "요청한 주소가 존재하지 않습니다."
+            );
             return;
         }
 
+        // 루트 경로에서는 GET 요청만 허용합니다.
         if (!"GET".equalsIgnoreCase(
                 exchange.getRequestMethod()
         )) {
-            exchange.sendResponseHeaders(405, -1);
-            exchange.close();
+            HttpResponseUtil.sendError(
+                    exchange,
+                    405,
+                    "지원하지 않는 요청입니다.",
+                    "현재 주소에서는 사용할 수 없는 요청 방식입니다."
+            );
             return;
         }
 

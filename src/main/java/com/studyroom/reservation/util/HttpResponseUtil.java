@@ -206,4 +206,73 @@ public final class HttpResponseUtil {
         exchange.sendResponseHeaders(303, -1);
         exchange.close();
     }
+
+    /**
+     * 공통 오류 화면을 지정한 HTTP 상태 코드로 반환합니다.
+     * 오류 제목과 메시지는 HTML 특수문자를 변환한 뒤 템플릿에 삽입하며,
+     * 로그인 여부와 관계없이 사용할 수 있는 독립 오류 화면을 제공합니다.
+     *
+     * @param exchange 현재 HTTP 요청과 응답
+     * @param statusCode 반환할 HTTP 상태 코드
+     * @param title 오류 화면 제목
+     * @param message 사용자에게 표시할 오류 메시지
+     * @throws IOException 템플릿 또는 응답 처리 중 오류가 발생한 경우
+     */
+    public static void sendError(
+            HttpExchange exchange,
+            int statusCode,
+            String title,
+            String message
+    ) throws IOException {
+
+        String html;
+
+        try {
+            html = loadTemplateResource(
+                    "error.html"
+            );
+        } catch (IOException e) {
+            // 오류 화면 자체를 불러오지 못한 경우에는 본문 없이 상태 코드만 반환합니다.
+            exchange.sendResponseHeaders(
+                    statusCode,
+                    -1
+            );
+            exchange.close();
+            return;
+        }
+
+        // 사용자에게 표시할 문자열은 HTML escape 후 템플릿에 삽입합니다.
+        html = html.replace(
+                "{{title}}",
+                escapeHtml(title)
+        );
+
+        html = html.replace(
+                "{{message}}",
+                escapeHtml(message)
+        );
+
+        byte[] responseBody =
+                html.getBytes(
+                        StandardCharsets.UTF_8
+                );
+
+        exchange.getResponseHeaders().set(
+                "Content-Type",
+                "text/html; charset=UTF-8"
+        );
+
+        exchange.sendResponseHeaders(
+                statusCode,
+                responseBody.length
+        );
+
+        try {
+            exchange.getResponseBody().write(
+                    responseBody
+            );
+        } finally {
+            exchange.close();
+        }
+    }
 }
