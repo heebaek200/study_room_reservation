@@ -2,8 +2,165 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>내 예약 목록</title>
+
+    <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>내 예약 조회 | 스터디룸 예약 관리</title>
+
+    <link
+            rel="stylesheet"
+            href="/css/common.css"
+    >
 </head>
-<body>
+
+<!--
+    header/nav/footer 구조는 room-detail.html과 동일하게 맞췄습니다.
+    (공통 CSS 클래스인 app-body, app-header, app-nav 등을 그대로 재사용)
+-->
+<body class="app-body">
+
+<header class="app-header">
+    <div class="header-inner">
+        <a class="app-title" href="/home">
+            스터디룸 예약 관리
+        </a>
+
+        <div class="login-info">
+            <span class="role-badge">
+                일반 회원
+            </span>
+
+            <form
+                    class="logout-form"
+                    action="/logout"
+                    method="post"
+            >
+                <button
+                        class="logout-button"
+                        type="submit"
+                >
+                    로그아웃
+                </button>
+            </form>
+        </div>
+    </div>
+</header>
+
+<nav class="app-nav" aria-label="주요 메뉴">
+    <ul class="nav-list">
+        <li>
+            <a class="nav-link" href="/home">
+                홈
+            </a>
+        </li>
+
+        <li>
+            <a class="nav-link" href="/rooms">
+                스터디룸
+            </a>
+        </li>
+
+        <li>
+            <a class="nav-link" href="/my-info">
+                내 정보
+            </a>
+        </li>
+
+        <!-- 이 화면의 nav-link에만 current 클래스를 줘서 현재 위치를 표시 -->
+        <li>
+            <a
+                    class="nav-link current"
+                    href="/my-reservations"
+            >
+                내 예약
+            </a>
+        </li>
+
+        <li>
+            <a class="nav-link" href="/my-refunds">
+                내 환불
+            </a>
+        </li>
+    </ul>
+</nav>
+
+<main class="app-main">
+    <section class="page-heading">
+        <p class="eyebrow">
+            RESERVATION
+        </p>
+
+        <h1>내 예약 조회</h1>
+
+        <p>
+            본인이 신청한 예약의 목록과 상세 정보를 확인할 수 있습니다.
+        </p>
+    </section>
+
+    <!--
+        아래 자리가 이 화면의 핵심입니다.
+        ReservationQueryHandler의 sendPage 메서드에서 template.formatted(content)를 호출하면,
+        Java 쪽에서 미리 만들어둔 HTML 문자열(content)이 이 자리에 그대로 삽입됩니다.
+
+        content는 상황에 따라 둘 중 하나입니다.
+        - 목록 조회(GET slash my-reservations)                                     -> buildListContent가 만든 table 문자열
+        - 상세 조회(GET slash my-reservations slash detail 물음표reservationId=5)  -> buildDetailContent가 만든 article/dl 문자열
+
+        주의: 이 템플릿은 중괄호 두 개짜리 치환(HttpResponseUtil.sendTemplate) 방식이 아니라
+        Java의 String.formatted 방식을 사용합니다.
+        그래서 퍼센트 기호가 이 파일 안에 따로 더 들어가면(예: 폭 50퍼센트 같은 표현)
+        형식 인자 개수가 안 맞아 예외가 발생합니다.
+        퍼센트 기호를 꼭 써야 한다면 반드시 두 번(퍼센트퍼센트) 이어 써야 합니다.
+    -->
+    %s
+</main>
+
+<footer class="app-footer">
+    <div class="footer-inner">
+        <section class="footer-section">
+            <strong>프로젝트</strong>
+
+            <div class="footer-links">
+                <a
+                        href="https://github.com/heebaek200/study_room_reservation"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                >
+                    GitHub 저장소
+                </a>
+
+                <a
+                        href="https://github.com/heebaek200/study_room_reservation/wiki"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                >
+                    Wiki 홈
+                </a>
+            </div>
+        </section>
+
+        <section class="footer-section">
+            <strong>구현 및 검증</strong>
+
+            <div class="footer-links">
+                <a
+                        href="https://github.com/heebaek200/study_room_reservation/issues/29"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                >
+                    예약 조회 GUI Issue
+                </a>
+            </div>
+        </section>
+
+        <p class="footer-copy">
+            Study Room Reservation System
+        </p>
+    </div>
+</footer>
+
 </body>
 </html>
