@@ -2,25 +2,34 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>내 정보</title>
+    <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0"
+    >
+    <title>내 정보 | 스터디룸 예약 관리</title>
     <link rel="stylesheet" href="/css/common.css">
 </head>
-<body>
-<main>
+<body class="app-body">
+
+{{header}}
+
+{{navigation}}
+
+<main class="app-main">
+<section>
     <h1>내 정보</h1>
 
-    %s
+    {{message}}
 
     <form action="/my-info" method="post">
         <div>
             <label for="email">이메일</label>
-            <input id="email" type="email" value="%s" readonly>
+            <input id="email" type="email" value="{{email}}" readonly>
         </div>
 
         <div>
             <label for="name">이름</label>
-            <input id="name" name="name" type="text" value="%s" required>
+            <input id="name" name="name" type="text" value="{{name}}" required>
         </div>
 
         <button type="submit">이름 저장</button>
@@ -33,6 +42,10 @@
     <p>
         <a href="/rooms">스터디룸 목록으로</a>
     </p>
+</section>
 </main>
+
+{{footer}}
+
 </body>
 </html>

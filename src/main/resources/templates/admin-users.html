@@ -2,12 +2,20 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>회원 관리</title>
+    <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0"
+    >
+    <title>회원 관리 | 스터디룸 예약 관리</title>
     <link rel="stylesheet" href="/css/common.css">
 </head>
-<body>
-<main>
+<body class="app-body">
+
+{{header}}
+
+{{navigation}}
+
+<main class="app-main">
     <h1>회원 관리</h1>
 
     <table>
@@ -15,7 +23,7 @@
         <tr><th>ID</th><th>이메일</th><th>이름</th><th>권한</th><th>상태</th></tr>
         </thead>
         <tbody>
-        %s
+            {{userRows}}
         </tbody>
     </table>
 
@@ -23,5 +31,8 @@
         <a href="/rooms">스터디룸 목록으로</a>
     </p>
 </main>
+
+{{footer}}
+
 </body>
 </html>

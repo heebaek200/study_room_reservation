@@ -93,39 +93,52 @@ public class UserHandler implements HttpHandler {
     private void sendMyInfoPage(HttpExchange exchange, User user, String message) throws IOException {
         String resourcePath = "/templates/my-info.html";
 
-        try (InputStream inputStream =
-                     UserHandler.class.getResourceAsStream(resourcePath)) {
-            if (inputStream == null) {
-                sendMessage(exchange, 404, "화면 파일을 찾을 수 없습니다.");
-                return;
-            }
+        String header =
+                HttpResponseUtil.loadFragment(
+                        "app-header.html"
+                );
 
-            String template = new String(
-                    inputStream.readAllBytes(),
-                    StandardCharsets.UTF_8
-            );
+        String navigation =
+                HttpResponseUtil.loadFragment(
+                        "nav-user.html"
+                );
 
-            String notice = (message == null || message.isBlank())
-                    ? ""
-                    : "<p>" + escapeHtml(message) + "</p>";
+        String footer =
+                HttpResponseUtil.loadFragment(
+                        "app-footer.html"
+                );
 
-            String html = template.formatted(
-                    notice,
-                    escapeHtml(user.getEmail()),
-                    escapeHtml(user.getName())
-            );
+        Map<String, String> values = new HashMap<>();
 
-            byte[] responseBody = html.getBytes(StandardCharsets.UTF_8);
+        values.put("userName", user.getName());
+        values.put("roleName", "일반 회원");
+        values.put("roleClass", "");
 
-            exchange.getResponseHeaders().set(
-                    "Content-Type",
-                    "text/html; charset=UTF-8"
-            );
-            exchange.sendResponseHeaders(200, responseBody.length);
-            exchange.getResponseBody().write(responseBody);
-        } finally {
-            exchange.close();
-        }
+        values.put("homeCurrent", "");
+        values.put("roomsCurrent", "");
+        values.put("myInfoCurrent", "current");
+        values.put("myReservationsCurrent", "");
+        values.put("myRefundsCurrent", "");
+
+        values.put("email", user.getEmail());
+        values.put("name", user.getName());
+        values.put(
+                "message",
+                message == null
+                        ? ""
+                        : message
+        );
+
+        HttpResponseUtil.sendTemplateWithHtml(
+                exchange,
+                "my-info.html",
+                values,
+                Map.of(
+                        "header", header,
+                        "navigation", navigation,
+                        "footer", footer
+                )
+        );
     }
 
     // 3. POST /my-info - 폼으로 제출한 새 이름으로 수정. 성공하면 /my-info로 redirect(PRG 패턴),
@@ -213,6 +226,15 @@ public class UserHandler implements HttpHandler {
     private void handleAdminUsers(HttpExchange exchange) throws IOException, SQLException {
         String sessionId = HttpRequestUtil.findCookie(exchange, SESSION_COOKIE_NAME);
 
+        User myUser;
+        try {
+            myUser = userService.getMyInfo(sessionId);
+        } catch (BusinessException e) {
+            // 로그인 안 된 상태로 접근하면 로그인 화면으로 보냄
+            HttpResponseUtil.redirect(exchange, "/login");
+            return;
+        }
+
         List<User> users = userService.getAllUsers(sessionId);
 
         // 회원 수만큼 <tr> 한 줄씩 만들어서 이어붙임 (표의 반복되는 부분을 미리 문자열로 완성)
@@ -229,38 +251,52 @@ public class UserHandler implements HttpHandler {
             ));
         }
 
-        sendUsersPage(exchange, rows.toString());
+        sendUsersPage(exchange, myUser, rows.toString());
     }
 
     // admin-users.html 템플릿의 <tbody> 자리에 완성된 회원 목록 행(rows)을 채워서 응답
-    private void sendUsersPage(HttpExchange exchange, String rows) throws IOException {
+    private void sendUsersPage(HttpExchange exchange, User user, String rows) throws IOException {
         String resourcePath = "/templates/admin-users.html";
 
-        try (InputStream inputStream =
-                     UserHandler.class.getResourceAsStream(resourcePath)) {
-            if (inputStream == null) {
-                sendMessage(exchange, 404, "화면 파일을 찾을 수 없습니다.");
-                return;
-            }
+        String header =
+                HttpResponseUtil.loadFragment(
+                        "app-header.html"
+                );
 
-            String template = new String(
-                    inputStream.readAllBytes(),
-                    StandardCharsets.UTF_8
-            );
+        String navigation =
+                HttpResponseUtil.loadFragment(
+                        "nav-admin.html"
+                );
 
-            String html = template.formatted(rows);
+        String footer =
+                HttpResponseUtil.loadFragment(
+                        "app-footer.html"
+                );
 
-            byte[] responseBody = html.getBytes(StandardCharsets.UTF_8);
+        Map<String, String> values = new HashMap<>();
 
-            exchange.getResponseHeaders().set(
-                    "Content-Type",
-                    "text/html; charset=UTF-8"
-            );
-            exchange.sendResponseHeaders(200, responseBody.length);
-            exchange.getResponseBody().write(responseBody);
-        } finally {
-            exchange.close();
-        }
+        values.put("userName", user.getName());
+        values.put("roleName", "관리자");
+        values.put("roleClass", "admin");
+
+        values.put("homeCurrent", "");
+        values.put("roomsCurrent", "");
+        values.put("adminRoomsCurrent", "");
+        values.put("adminUsersCurrent", "current");
+        values.put("adminReservationsCurrent", "");
+        values.put("adminRefundsCurrent", "");
+
+        HttpResponseUtil.sendTemplateWithHtml(
+                exchange,
+                "admin-users.html",
+                values,
+                Map.of(
+                        "header", header,
+                        "navigation", navigation,
+                        "footer", footer,
+                        "userRows", rows
+                )
+        );
     }
 
     // ---- 아래는 여러 메서드가 공통으로 쓰는 헬퍼 ----

@@ -2,12 +2,14 @@ package com.studyroom.reservation.handler;
 
 import com.studyroom.reservation.dto.Refund;
 import com.studyroom.reservation.dto.Reservation;
+import com.studyroom.reservation.dto.User;
 import com.studyroom.reservation.enums.RefundStatus;
 import com.studyroom.reservation.enums.ReservationStatus;
 import com.studyroom.reservation.exception.BusinessException;
 import com.studyroom.reservation.service.AdminRefundService;
 import com.studyroom.reservation.service.AdminReservationQueryService;
 import com.studyroom.reservation.service.MemberRefundQueryService;
+import com.studyroom.reservation.service.UserService;
 import com.studyroom.reservation.util.HttpRequestUtil;
 import com.studyroom.reservation.util.HttpResponseUtil;
 import com.sun.net.httpserver.HttpExchange;
@@ -17,6 +19,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -28,11 +31,13 @@ public final class RefundHandler implements HttpHandler {
     private final MemberRefundQueryService memberRefundQueryService;
     private final AdminReservationQueryService adminReservationQueryService;
     private final AdminRefundService adminRefundService;
+    private final UserService userService;
 
     public RefundHandler(
             MemberRefundQueryService memberRefundQueryService,
             AdminReservationQueryService adminReservationQueryService,
-            AdminRefundService adminRefundService
+            AdminRefundService adminRefundService,
+            UserService userService
     ) {
         this.memberRefundQueryService =
                 memberRefundQueryService;
@@ -40,6 +45,8 @@ public final class RefundHandler implements HttpHandler {
                 adminReservationQueryService;
         this.adminRefundService =
                 adminRefundService;
+        this.userService =
+                userService;
     }
 
     @Override
@@ -50,6 +57,7 @@ public final class RefundHandler implements HttpHandler {
         String method = exchange.getRequestMethod();
 
         try {
+
             if ("/my-refunds".equals(path)
                     && "GET".equalsIgnoreCase(method)) {
                 handleMyRefunds(exchange);
@@ -109,14 +117,50 @@ public final class RefundHandler implements HttpHandler {
         List<Refund> refunds =
                 memberRefundQueryService.getMyRefunds(sessionId);
 
+        Map<String, String> values = new HashMap<>();
+
+        User currentUser;
+        try {
+            currentUser =
+                    userService.getMyInfo(
+                            sessionId
+                    );
+        } catch (BusinessException e) {
+            HttpResponseUtil.redirect(
+                    exchange,
+                    "/login"
+            );
+            return;
+        }
+
+        values.put("userName", currentUser.getName());
+        values.put("roleName", "일반 회원");
+        values.put("roleClass", "");
+
+        values.put("homeCurrent", "");
+        values.put("roomsCurrent", "");
+        values.put("myInfoCurrent", "");
+        values.put("myReservationsCurrent", "");
+        values.put("myRefundsCurrent", "current");
+
+        values.put(
+                "emptyMessage",
+                refunds.isEmpty()
+                        ? "환불 내역이 없습니다."
+                        : ""
+        );
+
         HttpResponseUtil.sendTemplateWithHtml(
                 exchange,
                 "my-refunds.html",
+                values,
                 Map.of(
-                        "emptyMessage",
-                        refunds.isEmpty() ? "환불 내역이 없습니다." : ""
-                ),
-                Map.of(
+                        "header",
+                        HttpResponseUtil.loadFragment("app-header.html"),
+                        "navigation",
+                        HttpResponseUtil.loadFragment("nav-user.html"),
+                        "footer",
+                        HttpResponseUtil.loadFragment("app-footer.html"),
                         "refundRows",
                         buildMemberRefundRows(refunds)
                 )
@@ -161,20 +205,51 @@ public final class RefundHandler implements HttpHandler {
             reservations = List.of(reservation);
         }
 
+
+        Map<String, String> values = new HashMap<>();
+
+        User currentUser;
+        try {
+            currentUser =
+                    userService.getMyInfo(
+                            sessionId
+                    );
+        } catch (BusinessException e) {
+            HttpResponseUtil.redirect(
+                    exchange,
+                    "/login"
+            );
+            return;
+        }
+
+        values.put("userName", currentUser.getName());
+        values.put("roleName", "관리자");
+        values.put("roleClass", "admin");
+
+        values.put("homeCurrent", "");
+        values.put("roomsCurrent", "");
+        values.put("adminRoomsCurrent", "");
+        values.put("adminUsersCurrent", "");
+        values.put("adminReservationsCurrent", "current");
+        values.put("adminRefundsCurrent", "");
+
         HttpResponseUtil.sendTemplateWithHtml(
                 exchange,
                 "admin-reservations.html",
-                Map.of(),
+                values,
                 Map.of(
+                        "header",
+                        HttpResponseUtil.loadFragment("app-header.html"),
+                        "navigation",
+                        HttpResponseUtil.loadFragment("nav-admin.html"),
+                        "footer",
+                        HttpResponseUtil.loadFragment("app-footer.html"),
                         "reservationRows",
                         buildReservationRows(reservations)
                 )
         );
     }
 
-    /**
-     * 관리자의 전체 환불 또는 상태별 환불을 조회합니다.
-     */
     /**
      * 관리자의 환불 목록·상태별 목록·상세 정보를 조회합니다.
      */
@@ -227,14 +302,46 @@ public final class RefundHandler implements HttpHandler {
             );
         }
 
+
+        Map<String, String> values = new HashMap<>();
+
+        User currentUser;
+        try {
+            currentUser =
+                    userService.getMyInfo(
+                            sessionId
+                    );
+        } catch (BusinessException e) {
+            HttpResponseUtil.redirect(
+                    exchange,
+                    "/login"
+            );
+            return;
+        }
+
+        values.put("userName", currentUser.getName());
+        values.put("roleName", "관리자");
+        values.put("roleClass", "admin");
+
+        values.put("homeCurrent", "");
+        values.put("roomsCurrent", "");
+        values.put("adminRoomsCurrent", "");
+        values.put("adminUsersCurrent", "");
+        values.put("adminReservationsCurrent", "");
+        values.put("adminRefundsCurrent", "current");
+        values.put("resultMessage", defaultString(resultMessage));
+
         HttpResponseUtil.sendTemplateWithHtml(
                 exchange,
                 "admin-refunds.html",
+                values,
                 Map.of(
-                        "resultMessage",
-                        defaultString(resultMessage)
-                ),
-                Map.of(
+                        "header",
+                        HttpResponseUtil.loadFragment("app-header.html"),
+                        "navigation",
+                        HttpResponseUtil.loadFragment("nav-admin.html"),
+                        "footer",
+                        HttpResponseUtil.loadFragment("app-footer.html"),
                         "refundRows",
                         buildAdminRefundRows(refunds)
                 )
@@ -384,9 +491,6 @@ public final class RefundHandler implements HttpHandler {
         return rows.toString();
     }
 
-    /**
-     * 관리자 예약 목록 HTML을 생성합니다.
-     */
     /**
      * 관리자 예약 목록 HTML을 생성합니다.
      */
