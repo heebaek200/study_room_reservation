@@ -127,12 +127,13 @@ public final class Main {
         StudyRoomHandler studyRoomHandler = new StudyRoomHandler(authService, studyRoomService);
         server.createContext("/rooms", studyRoomHandler);
         server.createContext("/rooms/detail", studyRoomHandler);
+        server.createContext("/admin/rooms", studyRoomHandler);
         /*
          * 아래 라우터는 담당 GUI Issue가 main에 병합된 뒤 활성화합니다.
          *
          * // 스터디룸
 
-         * server.createContext("/admin/rooms", studyRoomHandler);
+
          *
          * // 예약 조회 및 취소
          * server.createContext("/my-reservations", reservationQueryHandler);

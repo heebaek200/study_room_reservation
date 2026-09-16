@@ -21,6 +21,7 @@ import com.studyroom.reservation.enums.UserRole;
 import com.studyroom.reservation.exception.BusinessException;
 
 import java.util.HashMap;
+import java.math.BigDecimal;
 
 public class StudyRoomHandler implements HttpHandler {
 
@@ -82,7 +83,8 @@ public class StudyRoomHandler implements HttpHandler {
                     // 3. 세션에서 사용자 이메일과 권한 정보를 안전하게 가져옴
                     String userName = (session != null)
                             ? (session.getRole() == UserRole.ADMIN ? "관리자" : "회원님") : "게스트";
-                    String roleName = (session != null && session.getRole() != null) ? session.getRole().name() : "일반 회원";
+                    // 뱃지에"비회원"으로 나옴
+                    String roleName = (session != null && session.getRole() != null) ? session.getRole().name() : "비회원";
 
                     // 4. rooms.html 템플릿에 DB 데이터와 사용자 정보를 함께 전달
                     HttpResponseUtil.sendTemplate(exchange, "rooms.html", Map.of(
@@ -115,46 +117,13 @@ public class StudyRoomHandler implements HttpHandler {
                         roleName = isAdmin ? "관리자" : "일반 회원";
                     }
 
-                    // 3. 권한별 하단 버튼 및 예약 영역 동적 제어
-                    String actionButton = "";
-                    String reservationSection = "";
-
-                    if (!isLogin) {
-                        // [비회원] 목록으로, 홈으로, 로그인 안내
-                        actionButton = "<li><a href=\"/login\">로그인 안내</a></li>";
-                        reservationSection = "<article style=\"text-align: center; padding: 2rem;\"><p>예약은 로그인 후 이용 가능합니다. <a href=\"/login\"><strong>로그인하기</strong></a></p></article>";
-                    } else if (isAdmin) {
-                        // [관리자] 목록으로, 홈으로, 수정 화면 이동 (예약 신청 기능 미표시)
-                        actionButton = "<li><a href=\"/admin/rooms/edit?roomId=" + room.getRoomId() + "\">수정 화면 이동</a></li>";
-                        reservationSection = "<!-- 관리자에게는 예약 신청 영역이 표시되지 않습니다. -->";
-                    } else {
-                        // [일반 회원] 목록으로, 홈으로, 예약 신청 폼 표시
-                        actionButton = ""; // 기본 목록/홈 버튼 사용
-                        reservationSection =
-                                "<article aria-labelledby=\"reservation-heading\">" +
-                                        "    <header>" +
-                                        "        <h2 id=\"reservation-heading\">예약 시간 입력</h2>" +
-                                        "        <p>종료 일시는 시작 일시보다 늦어야 합니다.</p>" +
-                                        "    </header>" +
-                                        "    <form action=\"/reservations/create\" method=\"post\">" +
-                                        "        <input type=\"hidden\" name=\"roomId\" value=\"" + room.getRoomId() + "\">" +
-                                        "        <div>" +
-                                        "            <label for=\"startTime\">시작 일시</label>" +
-                                        "            <input id=\"startTime\" name=\"startTime\" type=\"datetime-local\" step=\"60\" required>" +
-                                        "        </div>" +
-                                        "        <div>" +
-                                        "            <label for=\"endTime\">종료 일시</label>" +
-                                        "            <input id=\"endTime\" name=\"endTime\" type=\"datetime-local\" step=\"60\" required>" +
-                                        "        </div>" +
-                                        "        <output role=\"status\" aria-live=\"polite\">{{resultMessage}}</output>" +
-                                        "        <menu>" +
-                                        "            <li><a href=\"/rooms\">목록으로</a></li>" +
-                                        "            <li><a href=\"/home\">홈으로</a></li>" +
-                                        "            <li><button type=\"submit\">예약 신청</button></li>" +
-                                        "        </menu>" +
-                                        "    </form>" +
-                                        "</article>";
-                    }
+                    // 3. 권한별 CSS display 스타일 결정
+                    // 💡 [추가됨] 일반 회원이 아닐 때(비회원/관리자)만 상단 공통 메뉴 표시
+                    String nonUserMenuDisplay = (isLogin && !isAdmin) ? "none" : "block";
+                    String guestLinkDisplay = !isLogin ? "block" : "none";
+                    String adminLinkDisplay = isAdmin ? "block" : "none";
+                    // 💡 일반 회원에게만 하단 폼 전체 노출
+                    String reservationSectionDisplay = (isLogin && !isAdmin) ? "block" : "none";
 
                     // 4. 템플릿에 전달할 맵 구성
                     Gson gson = new Gson();
@@ -164,8 +133,12 @@ public class StudyRoomHandler implements HttpHandler {
                     variables.put("capacity", String.valueOf(room.getCapacity()));
                     variables.put("hourlyRate", room.getHourlyRate() != null ? room.getHourlyRate().toString() : "0");
                     variables.put("roleName", roleName);
-                    variables.put("actionButton", actionButton);
-                    variables.put("reservationSection", reservationSection);
+
+                    // 💡 위에서 만든 스타일 제어 변수들을 맵에 담습니다.
+                    variables.put("nonUserMenuDisplay", nonUserMenuDisplay);
+                    variables.put("guestLinkDisplay", guestLinkDisplay);
+                    variables.put("adminLinkDisplay", adminLinkDisplay);
+                    variables.put("reservationSectionDisplay", reservationSectionDisplay);
                     variables.put("roomData", gson.toJson(room));
 
                     // 5. 템플릿 전송
@@ -173,11 +146,75 @@ public class StudyRoomHandler implements HttpHandler {
                     return;
 
                 } else if ("/admin/rooms".equals(path)) {
-                    // 스터디룸 관리 화면 로직이 들어갈 자리
+                    // [1단계] 관리자 스터디룸 관리 화면 라우팅 로직
+
+                    // 1. Service를 통해 DB에 등록된 전체 스터디룸 목록 조회
+                    List<StudyRoom> roomList = studyRoomService.getRooms();
+
+                    // 2. 프론트엔드(자바스크립트)에서 표(Table)를 쉽게 그리도록 JSON 문자열로 변환
+                    Gson gson = new Gson();
+                    String roomsJsonData = gson.toJson(roomList);
+
+                    // 3. 템플릿에 전달할 변수 맵(Map) 구성
+                    Map<String, String> variables = new HashMap<>();
+                    variables.put("roomsData", roomsJsonData); // 스터디룸 전체 데이터
+                    variables.put("roleName", "관리자");        // 상단 뱃지용
+
+                    // 💡 [미리 준비] 4단계에서 잘못된 값 입력 시 에러 메시지를 띄우기 위한 빈 공간 세팅
+                    variables.put("errorMessage", "");
+
+                    // 4. admin-rooms.html 템플릿으로 응답 전송
+                    HttpResponseUtil.sendTemplate(exchange, "admin-rooms.html", variables);
+                    return;
                 }
 
             } else if ("POST".equalsIgnoreCase(method)) {
-                // ... (POST 관련 라우팅 로직) ...
+                // [4단계] 관리자 스터디룸 등록/수정 POST 처리 로직
+                if ("/admin/rooms/save".equals(path) || "/admin/rooms/update".equals(path)) {
+                    try {
+                        // 1. 폼 데이터 직접 읽기 및 파싱 (유틸리티 의존성 제거)
+                        String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+                        Map<String, String> formData = new java.util.HashMap<>();
+                        if (body != null && !body.isBlank()) {
+                            for (String param : body.split("&")) {
+                                String[] keyValue = param.split("=");
+                                if (keyValue.length == 2) {
+                                    formData.put(
+                                            java.net.URLDecoder.decode(keyValue[0], StandardCharsets.UTF_8),
+                                            java.net.URLDecoder.decode(keyValue[1], StandardCharsets.UTF_8)
+                                    );
+                                }
+                            }
+                        }
+
+                        // 2. 현재 접속자의 세션 ID 가져오기
+                        sessionId = HttpRequestUtil.findCookie(exchange, SESSION_COOKIE_NAME);
+
+                        String roomIdStr = formData.get("roomId");
+                        String name = formData.get("name");
+                        int capacity = Integer.parseInt(formData.get("capacity"));
+                        BigDecimal hourlyRate = new BigDecimal(formData.get("hourlyRate"));
+
+                        // 3. 서비스 호출
+                        if (roomIdStr == null || roomIdStr.isBlank()) {
+                            studyRoomService.createRoom(sessionId, name, capacity, hourlyRate);
+                        } else {
+                            long roomId = Long.parseLong(roomIdStr);
+                            studyRoomService.updateRoom(sessionId, roomId, name, capacity, hourlyRate);
+                        }
+
+                        // 4. 성공 시 리다이렉트
+                        HttpResponseUtil.redirect(exchange, "/admin/rooms");
+                        return;
+
+                    } catch (BusinessException e) {
+                        renderAdminRoomsWithError(exchange, e.getMessage());
+                        return;
+                    } catch (NumberFormatException e) {
+                        renderAdminRoomsWithError(exchange, "수용 인원과 이용료는 올바른 숫자로 입력해주세요.");
+                        return;
+                    }
+                }
             }
 
         } catch (Exception e) {
@@ -200,5 +237,18 @@ public class StudyRoomHandler implements HttpHandler {
             }
         }
         return -1;
+    }
+
+    private void renderAdminRoomsWithError(HttpExchange exchange, String errorMessage) throws IOException {
+        List<StudyRoom> roomList = studyRoomService.getRooms();
+        Gson gson = new Gson();
+        String roomsJsonData = gson.toJson(roomList);
+
+        Map<String, String> variables = new HashMap<>();
+        variables.put("roomsData", roomsJsonData);
+        variables.put("roleName", "관리자");
+        variables.put("errorMessage", errorMessage);
+
+        HttpResponseUtil.sendTemplate(exchange, "admin-rooms.html", variables);
     }
 }

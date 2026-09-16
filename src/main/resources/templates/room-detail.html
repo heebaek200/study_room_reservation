@@ -26,7 +26,7 @@
 
         <div class="login-info">
             <span class="role-badge">
-                일반 회원
+                {{roleName}}
             </span>
 
             <form
@@ -124,7 +124,22 @@
                 <dd>{{hourlyRate}}원</dd>
             </div>
         </dl>
+
+        <!-- 💡 [Issue #24 작업 영역] 비회원 / 관리자 전용 메뉴 -->
+        <menu style="display: {{nonUserMenuDisplay}};">
+            <li><a href="/rooms">목록으로</a></li>
+            <li><a href="/home">홈으로</a></li>
+            <li style="display: {{guestLinkDisplay}};"><a href="/login">로그인 안내</a></li>
+            <li style="display: {{adminLinkDisplay}};"><a href="/admin/rooms/edit?roomId={{roomId}}">수정 화면 이동</a></li>
+        </menu>
     </article>
+
+    <!-- ======================================================== -->
+    <!-- [Issue #25 작업 영역 시작] 예약 GUI 담당 영역 (덮어쓰기 금지) -->
+    <!-- ======================================================== -->
+
+    <!-- 💡 1. 여기에 div 태그를 추가하여 예약 폼을 감싸줍니다. -->
+    <div style="display: {{reservationSectionDisplay}};">
 
     <!-- 예약 신청 -->
     <article aria-labelledby="reservation-heading">
@@ -181,7 +196,8 @@
             <output
                     role="status"
                     aria-live="polite"
-            >{{resultMessage}}</output>
+            >{{resultMessage}}
+            </output>
 
             <menu>
                 <li>
@@ -204,6 +220,8 @@
             </menu>
         </form>
     </article>
+
+    </div> <!-- 💡 2. 폼이 끝나는 곳에서 div 태그를 닫아줍니다. -->
 </main>
 
 <footer class="app-footer">
