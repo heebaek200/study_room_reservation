@@ -162,7 +162,7 @@
         <!-- 동적으로 변경될 제목 -->
         <h2 id="form-heading">스터디룸 등록</h2>
 
-        <form id="room-form" action="/admin/rooms/save" method="post">
+        <form id="room-form" action="/admin/rooms/create" method="post">
             <!-- 수정 시 대상 roomId를 담을 숨김 필드 -->
             <input type="hidden" id="roomId" name="roomId" value="">
 
@@ -247,7 +247,7 @@
 
         document.getElementById('form-heading').innerText = '스터디룸 등록';
         document.getElementById('submit-btn').innerText = '등록';
-        document.getElementById('room-form').action = '/admin/rooms/save';
+        document.getElementById('room-form').action = '/admin/rooms/create';
         document.getElementById('cancel-btn').style.display = 'none';
     }
 </script>

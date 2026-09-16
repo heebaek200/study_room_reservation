@@ -170,7 +170,7 @@ public class StudyRoomHandler implements HttpHandler {
 
             } else if ("POST".equalsIgnoreCase(method)) {
                 // [4단계] 관리자 스터디룸 등록/수정 POST 처리 로직
-                if ("/admin/rooms/save".equals(path) || "/admin/rooms/update".equals(path)) {
+                if ("/admin/rooms/create".equals(path) || "/admin/rooms/update".equals(path)) {
                     try {
                         // 1. 폼 데이터 직접 읽기 및 파싱 (유틸리티 의존성 제거)
                         String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
@@ -218,6 +218,20 @@ public class StudyRoomHandler implements HttpHandler {
             }
 
         } catch (Exception e) {
+            // 1. 관리자 스터디룸 등록/수정 중 발생한 예외인 경우 에러 메시지와 함께 관리자 페이지 재렌더링
+            if ("POST".equalsIgnoreCase(method) &&
+                    ("/admin/rooms/create".equals(path) || "/admin/rooms/update".equals(path))) {
+
+                String errorMessage = e.getMessage() != null && !e.getMessage().isBlank()
+                        ? e.getMessage()
+                        : "요청을 처리하는 중 오류가 발생했습니다.";
+
+                renderAdminRoomsWithError(exchange, errorMessage);
+                return;
+            }
+
+            // 2. 그 외 일반적인 예외인 경우 기존 방식대로 처리
+            exchange.close();
             e.printStackTrace();
         }
     }
