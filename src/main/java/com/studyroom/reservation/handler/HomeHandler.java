@@ -15,6 +15,7 @@ import com.sun.net.httpserver.HttpHandler;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -106,9 +107,6 @@ public final class HomeHandler implements HttpHandler {
     }
 
     /**
-     * 권한에 맞는 공통 홈 템플릿을 반환합니다.
-     */
-    /**
      * 로그인 사용자의 권한에 맞는 홈 화면을 반환합니다.
      * 공통 헤더와 푸터를 불러오고 권한별 내비게이션을 선택하여
      * 홈 템플릿의 공통 레이아웃 영역에 삽입합니다.
@@ -152,15 +150,32 @@ public final class HomeHandler implements HttpHandler {
                         "app-footer.html"
                 );
 
+        // 공통 레이아웃에서 사용하는 템플릿 값을 설정합니다.
+        Map<String, String> values = new HashMap<>();
+
+        values.put("userName", user.getName());
+        values.put("roleName", roleName);
+        values.put("roleClass", roleClass);
+
+        // 홈 화면이므로 홈 메뉴만 현재 위치로 표시합니다.
+        values.put("homeCurrent", "current");
+
+        // 일반 회원 메뉴의 비활성 항목
+        values.put("roomsCurrent", "");
+        values.put("myInfoCurrent", "");
+        values.put("myReservationsCurrent", "");
+        values.put("myRefundsCurrent", "");
+
+        // 관리자 메뉴의 비활성 항목
+        values.put("adminRoomsCurrent", "");
+        values.put("adminUsersCurrent", "");
+        values.put("adminReservationsCurrent", "");
+        values.put("adminRefundsCurrent", "");
+
         HttpResponseUtil.sendTemplateWithHtml(
                 exchange,
                 templateName,
-                Map.of(
-                        "userName", user.getName(),
-                        "roleName", roleName,
-                        "roleClass", roleClass,
-                        "homeCurrent", "current"
-                ),
+                values,
                 Map.of(
                         "header", header,
                         "navigation", navigation,
