@@ -100,29 +100,10 @@
 <body>
 
 <!-- 상단 헤더 -->
-<header class="app-header">
-    <div class="header-inner">
-        <a class="app-title" href="/home">스터디룸 예약 관리</a>
-        <div class="login-info">
-            <span class="role-badge">{{roleName}}</span>
-            <form class="logout-form" action="/logout" method="post">
-                <button class="logout-button" type="submit">로그아웃</button>
-            </form>
-        </div>
-    </div>
-</header>
+{{header}}
 
 <!-- 관리자 전용 메뉴 -->
-<nav class="app-nav" aria-label="주요 메뉴">
-    <ul class="nav-list">
-        <li><a class="nav-link" href="/home">홈</a></li>
-        <li><a class="nav-link" href="/rooms">스터디룸</a></li>
-        <li><a class="nav-link" href="/admin/users">회원 관리</a></li>
-        <li><a class="nav-link current" href="/admin/rooms">스터디룸 관리</a></li>
-        <li><a class="nav-link" href="/admin/reservations">예약 관리</a></li>
-        <li><a class="nav-link" href="/admin/refunds">환불 관리</a></li>
-    </ul>
-</nav>
+{{navigation}}
 
 <!-- 메인 컨텐츠 영역 -->
 <main class="app-main">
@@ -191,6 +172,8 @@
         </form>
     </article>
 </main>
+
+{{footer}}
 
 <!-- JSON 안전 파싱을 위한 숨김 데이터 영역 -->
 <textarea id="rooms-json-data" style="display: none;">{{roomsData}}</textarea>

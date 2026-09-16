@@ -1,12 +1,14 @@
 package com.studyroom.reservation.handler;
 
 import com.studyroom.reservation.dto.Refund;
+import com.studyroom.reservation.dto.User;
 import com.studyroom.reservation.enums.RefundStatus;
 import com.studyroom.reservation.enums.UserRole;
 import com.studyroom.reservation.exception.BusinessException;
 import com.studyroom.reservation.service.AuthService;
 import com.studyroom.reservation.service.MemberRefundQueryService;
 import com.studyroom.reservation.service.ReservationCancelService;
+import com.studyroom.reservation.service.UserService;
 import com.studyroom.reservation.session.LoginSession;
 import com.studyroom.reservation.util.HttpRequestUtil;
 import com.studyroom.reservation.util.HttpResponseUtil;
@@ -16,6 +18,7 @@ import com.sun.net.httpserver.HttpHandler;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -23,10 +26,6 @@ public class ReservationCancelHandler implements HttpHandler {
 
     // 이 핸들러가 처리할 경로. POST로만 요청을 받습니다 (예약 취소는 상태를 바꾸는 동작이라 GET이 아니라 POST).
     private static final String CANCEL_PATH = "/reservations/cancel";
-
-    // 취소 처리가 끝나면(성공하든 실패하든) 돌아갈 목적지.
-    // 이슈 본문의 "성공·실패 후에는 필요에 따라 /my-reservations로 Redirect"에 해당.
-    private static final String MY_RESERVATIONS_PATH = "/my-reservations";
 
     // 로그인이 안 되어 있을 때 돌려보낼 경로. ReservationQueryHandler와 동일한 값.
     private static final String LOGIN_PATH = "/login";
@@ -37,12 +36,14 @@ public class ReservationCancelHandler implements HttpHandler {
     private final ReservationCancelService reservationCancelService;
     private final MemberRefundQueryService memberRefundQueryService;
     private final AuthService authService;
+    private final UserService userService;
 
 
-    public ReservationCancelHandler(ReservationCancelService reservationCancelService, MemberRefundQueryService memberRefundQueryService, AuthService authService) {
+    public ReservationCancelHandler(ReservationCancelService reservationCancelService, MemberRefundQueryService memberRefundQueryService, AuthService authService, UserService userService) {
         this.reservationCancelService = reservationCancelService;
         this.memberRefundQueryService = memberRefundQueryService;
         this.authService = authService;
+        this.userService = userService;
     }
 
     @Override
@@ -51,11 +52,21 @@ public class ReservationCancelHandler implements HttpHandler {
         String method = exchange.getRequestMethod();
 
         if (!path.equals(CANCEL_PATH)) {
-            sendMessage(exchange, 404, "요청한 페이지를 찾을 수 없습니다.");
+            HttpResponseUtil.sendError(
+                    exchange,
+                    404,
+                    "페이지를 찾을 수 없습니다.",
+                    "요청한 페이지를 찾을 수 없습니다."
+            );
             return;
         }
         if (!"POST".equalsIgnoreCase(method)) {
-            sendMessage(exchange, 405, "허용되지 않은 요청 방식입니다.");
+            HttpResponseUtil.sendError(
+                    exchange,
+                    405,
+                    "지원하지 않는 요청입니다.",
+                    "허용되지 않은 요청 방식입니다."
+            );
             return;
         }
         String sessionId = HttpRequestUtil.findCookie(exchange, SESSION_COOKIE_NAME);
@@ -68,7 +79,12 @@ public class ReservationCancelHandler implements HttpHandler {
             return;
         }
         if (session.getRole() != UserRole.USER) {
-            sendMessage(exchange, 403, "일반 회원만 이용할 수 있는 기능입니다.");
+            HttpResponseUtil.sendError(
+                    exchange,
+                    403,
+                    "접근할 수 없습니다.",
+                    "일반 회원만 이용할 수 있는 기능입니다."
+            );
             return;
         }
         Map<String, String> form = HttpRequestUtil.parseForm(exchange);
@@ -85,13 +101,34 @@ public class ReservationCancelHandler implements HttpHandler {
             // 방금 생성된 환불 요청을 찾아서 결과 화면에 같이 보여줍니다.
             Refund refund = findRefundByReservationId(sessionId, reservationId);
 
-            sendCancelResult(exchange, true, "예약이 취소되었습니다.", refund);
+            sendCancelResult(
+                    exchange,
+                    sessionId,
+                    true,
+                    "예약이 취소되었습니다.",
+                    refund
+            );
         } catch (BusinessException e) {
             // 남의 예약이거나, 이미 취소됐거나, 잘못된 예약번호인 경우 등
             // -> "취소 성공·실패 결과 표시" 요구사항의 "실패" 케이스
-            sendCancelResult(exchange, false, e.getMessage(), null);
+            try {
+                sendCancelResult(
+                        exchange,
+                        sessionId,
+                        false,
+                        e.getMessage(),
+                        null
+                );
+            } catch (SQLException ex) {
+                throw new RuntimeException(ex);
+            }
         } catch (SQLException e) {
-            sendMessage(exchange, 500, "예약 취소 처리 중 오류가 발생했습니다.");
+            HttpResponseUtil.sendError(
+                    exchange,
+                    500,
+                    "오류가 발생했습니다.",
+                    "예약 취소 처리 중 오류가 발생했습니다."
+            );
         }
     }
 
@@ -112,54 +149,138 @@ public class ReservationCancelHandler implements HttpHandler {
     }
 
     /**
-     * 취소 처리 결과(성공/실패)와, 성공했다면 환불 요청 상태까지 보여주는 결과 화면을 응답합니다.
-     * 리다이렉트하지 않고 이 POST 응답에서 바로 결과를 보여줍니다.
+     * 예약 취소 결과 화면을 공통 레이아웃과 함께 반환합니다.
+     * 현재 로그인 사용자의 이름과 일반 회원용 내비게이션 정보를 전달하고,
+     * 환불 결과 영역은 서버에서 생성한 HTML 조각으로 삽입합니다.
+     *
+     * @param exchange 현재 HTTP 요청과 응답
+     * @param sessionId 현재 로그인 세션 ID
+     * @param success 예약 취소 성공 여부
+     * @param message 사용자에게 표시할 결과 메시지
+     * @param refund 생성된 환불 요청 정보
+     * @throws IOException 응답 처리 중 오류가 발생한 경우
      */
-    private void sendCancelResult(HttpExchange exchange, boolean success, String message, Refund refund)
-            throws IOException {
+    private void sendCancelResult(
+            HttpExchange exchange,
+            String sessionId,
+            boolean success,
+            String message,
+            Refund refund
+    ) throws IOException, SQLException {
+
+        User currentUser;
+
+        try {
+            currentUser =
+                    userService.getMyInfo(
+                            sessionId
+                    );
+        } catch (BusinessException e) {
+            HttpResponseUtil.redirect(
+                    exchange,
+                    LOGIN_PATH
+            );
+            return;
+        }
+
+        // 성공 시에만 환불 요청 결과 영역을 생성합니다.
         String refundSection = "";
 
         if (refund != null) {
             refundSection = """
-                    <section>
-                        <h2>환불 요청 결과</h2>
-                        <dl>
-                            <div><dt>환불 상태</dt><dd>%s</dd></div>
-                        </dl>
-                    </section>
-                    """.formatted(escapeHtml(refundStatusLabel(refund.getStatus())));
+            <section>
+                <h2>환불 요청 결과</h2>
+
+                <dl>
+                    <div>
+                        <dt>환불 상태</dt>
+                        <dd>{{refundStatus}}</dd>
+                    </div>
+                </dl>
+            </section>
+            """;
         }
 
-        String html = """
-                <!DOCTYPE html>
-                <html lang="ko">
-                <head>
-                    <meta charset="UTF-8">
-                    <title>예약 취소 결과</title>
-                </head>
-                <body>
-                    <h1>%s</h1>
-                    <p>%s</p>
-                    %s
-                    <p><a href="%s">목록으로</a></p>
-                </body>
-                </html>
-                """.formatted(
-                success ? "취소 완료" : "취소 실패",
-                escapeHtml(message),
-                refundSection,
-                MY_RESERVATIONS_PATH
+        Map<String, String> values =
+                new HashMap<>();
+
+        values.put(
+                "userName",
+                currentUser.getName()
+        );
+        values.put(
+                "roleName",
+                "일반 회원"
+        );
+        values.put(
+                "roleClass",
+                ""
         );
 
-        byte[] responseBody = html.getBytes(StandardCharsets.UTF_8);
+        values.put(
+                "homeCurrent",
+                ""
+        );
+        values.put(
+                "roomsCurrent",
+                ""
+        );
+        values.put(
+                "myInfoCurrent",
+                ""
+        );
+        values.put(
+                "myReservationsCurrent",
+                "current"
+        );
+        values.put(
+                "myRefundsCurrent",
+                ""
+        );
 
-        try {
-            exchange.getResponseHeaders().set("Content-Type", "text/html; charset=UTF-8");
-            exchange.sendResponseHeaders(success ? 200 : 400, responseBody.length);
-            exchange.getResponseBody().write(responseBody);
-        } finally {
-            exchange.close();
-        }
+        // 예약 취소 결과 화면에 표시할 데이터
+        values.put(
+                "resultTitle",
+                success
+                        ? "취소 완료"
+                        : "취소 실패"
+        );
+
+        values.put(
+                "message",
+                message
+        );
+
+        values.put(
+                "refundStatus",
+                refund == null
+                        ? ""
+                        : refundStatusLabel(
+                        refund.getStatus()
+                )
+        );
+
+        HttpResponseUtil.sendTemplateWithHtml(
+                exchange,
+                "reservation-cancel-result.html",
+                values,
+                Map.of(
+                        "header",
+                        HttpResponseUtil.loadFragment(
+                                "app-header.html"
+                        ),
+                        "navigation",
+                        HttpResponseUtil.loadFragment(
+                                "nav-user.html"
+                        ),
+                        "footer",
+                        HttpResponseUtil.loadFragment(
+                                "app-footer.html"
+                        ),
+                        "refundSection",
+                        refundSection
+                )
+        );
     }
 
     // RefundStatus enum 값을 한글 라벨로 변환.
@@ -197,12 +318,10 @@ public class ReservationCancelHandler implements HttpHandler {
 
         byte[] responseBody = html.getBytes(StandardCharsets.UTF_8);
 
-        try {
+        try (exchange) {
             exchange.getResponseHeaders().set("Content-Type", "text/html; charset=UTF-8");
             exchange.sendResponseHeaders(statusCode, responseBody.length);
             exchange.getResponseBody().write(responseBody);
-        } finally {
-            exchange.close();
         }
     }
 

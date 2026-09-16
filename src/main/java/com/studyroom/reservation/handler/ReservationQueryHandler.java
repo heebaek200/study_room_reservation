@@ -2,12 +2,14 @@ package com.studyroom.reservation.handler;
 
 import com.studyroom.reservation.dto.Reservation;
 import com.studyroom.reservation.dto.StudyRoom;
+import com.studyroom.reservation.dto.User;
 import com.studyroom.reservation.enums.ReservationStatus;
 import com.studyroom.reservation.enums.UserRole;
 import com.studyroom.reservation.exception.BusinessException;
 import com.studyroom.reservation.service.AuthService;
 import com.studyroom.reservation.service.MemberReservationQueryService;
 import com.studyroom.reservation.service.StudyRoomService;
+import com.studyroom.reservation.service.UserService;
 import com.studyroom.reservation.session.LoginSession;
 import com.studyroom.reservation.util.HttpRequestUtil;
 import com.studyroom.reservation.util.HttpResponseUtil;
@@ -18,9 +20,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.sql.SQLException;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 import java.util.Optional;
 
 /**
@@ -57,16 +61,20 @@ public final class ReservationQueryHandler implements HttpHandler {
     // DAO/쿼리 로직은 이미 이 서비스 안에 구현되어 있으므로, 핸들러는 이 서비스만 호출하면 됩니다.
     private final MemberReservationQueryService reservationQueryService;
 
+    private final UserService userService;
+
     // 생성자로 위 세 가지 협력 객체를 주입받습니다.
     // (Main.java에서 new ReservationQueryHandler(authService, studyRoomService, reservationQueryService) 형태로 생성될 예정)
     public ReservationQueryHandler(
             AuthService authService,
             StudyRoomService studyRoomService,
-            MemberReservationQueryService reservationQueryService
+            MemberReservationQueryService reservationQueryService,
+            UserService userService
     ) {
         this.authService = authService;
         this.studyRoomService = studyRoomService;
         this.reservationQueryService = reservationQueryService;
+        this.userService = userService;
     }
 
     // HttpHandler 인터페이스가 요구하는 유일한 메서드.
@@ -133,14 +141,14 @@ public final class ReservationQueryHandler implements HttpHandler {
         // 400 안내 화면으로 응답합니다. (ReservationCreateHandler.handle()과 동일한 패턴)
         try {
             if (isListPath) {
-                handleList(exchange, session);
+                handleList(exchange, session, sessionId);
             } else {
                 Map<String, String> query = HttpRequestUtil.parseQuery(exchange);
                 String reservationIdValue = query.get("reservationId");
 
-                handleDetail(exchange, session, reservationIdValue);
+                handleDetail(exchange, session, sessionId, reservationIdValue);
             }
-        } catch (BusinessException e) {
+        } catch (BusinessException | SQLException e) {
             HttpResponseUtil.sendError(
                     exchange,
                     400,
@@ -153,7 +161,7 @@ public final class ReservationQueryHandler implements HttpHandler {
     /**
      * 로그인한 회원 본인의 예약 목록을 조회해서 화면에 표시합니다.
      */
-    private void handleList(HttpExchange exchange, LoginSession session) throws IOException {
+    private void handleList(HttpExchange exchange, LoginSession session, String sessionId) throws IOException, SQLException {
         // service.getMyReservations는 이미 구현되어 있음: 이 회원의 예약을 최신순으로 반환.
         List<Reservation> reservations =
                 reservationQueryService.getMyReservations(session.getUserId());
@@ -162,14 +170,14 @@ public final class ReservationQueryHandler implements HttpHandler {
         String content = buildListContent(reservations);
 
         // my-reservations.html 템플릿의 %s 자리에 끼워서 응답.
-        sendPage(exchange, content);
+        sendPage(exchange, sessionId, content);
     }
 
     /**
      * 예약 번호(reservationId)로 상세 정보를 조회해서 화면에 표시합니다.
      * 본인의 예약이 아니면(다른 회원 것이거나 존재하지 않으면) 접근을 차단합니다.
      */
-    private void handleDetail(HttpExchange exchange, LoginSession session, String reservationIdValue) throws IOException {
+    private void handleDetail(HttpExchange exchange, LoginSession session, String sessionId, String reservationIdValue) throws IOException, SQLException {
         // 쿼리스트링으로 들어온 문자열(reservationId)을 숫자로 변환. 없거나 잘못된 값이면 400 안내.
         long reservationId = parseReservationId(reservationIdValue);
 
@@ -195,7 +203,7 @@ public final class ReservationQueryHandler implements HttpHandler {
 
         String content = buildDetailContent(reservation.get());
 
-        sendPage(exchange, content);
+        sendPage(exchange, sessionId, content);
     }
 
     /**
@@ -368,34 +376,70 @@ public final class ReservationQueryHandler implements HttpHandler {
     }
 
     /**
-     * my-reservations.html 템플릿을 읽어서 %s 자리에 content를 채운 뒤 응답합니다.
-     * (UserHandler.sendUsersPage와 같은 방식)
+     * 내 예약 목록 또는 상세 화면을 공통 레이아웃과 함께 반환합니다.
+     * 현재 로그인 사용자 이름을 조회해 헤더에 표시하고,
+     * 예약 조회 결과 HTML은 escape하지 않는 조각으로 삽입합니다.
+     *
+     * @param exchange 현재 HTTP 요청과 응답
+     * @param sessionId 현재 로그인 세션 ID
+     * @param content 예약 목록 또는 상세 HTML
+     * @throws IOException 템플릿 또는 응답 처리 중 오류가 발생한 경우
      */
-    private void sendPage(HttpExchange exchange, String content) throws IOException {
-        String resourcePath = "/templates/my-reservations.html";
+    private void sendPage(
+            HttpExchange exchange,
+            String sessionId,
+            String content
+    ) throws IOException, SQLException {
 
-        try (InputStream inputStream = ReservationQueryHandler.class.getResourceAsStream(resourcePath)) {
-            if (inputStream == null) {
-                HttpResponseUtil.sendError(
-                        exchange,
-                        404,
-                        "페이지를 찾을 수 없습니다.",
-                        "화면 파일을 찾을 수 없습니다."
-                );
-                return;
-            }
+        User currentUser;
 
-            String template = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
-            String html = template.formatted(content);
-
-            byte[] responseBody = html.getBytes(StandardCharsets.UTF_8);
-
-            exchange.getResponseHeaders().set("Content-Type", "text/html; charset=UTF-8");
-            exchange.sendResponseHeaders(200, responseBody.length);
-            exchange.getResponseBody().write(responseBody);
-        } finally {
-            exchange.close();
+        try {
+            currentUser =
+                    userService.getMyInfo(
+                            sessionId
+                    );
+        } catch (BusinessException e) {
+            HttpResponseUtil.redirect(
+                    exchange,
+                    LOGIN_PATH
+            );
+            return;
         }
+
+        Map<String, String> values =
+                new HashMap<>();
+
+        values.put("userName", currentUser.getName());
+        values.put("roleName", "일반 회원");
+        values.put("roleClass", "");
+
+        values.put("homeCurrent", "");
+        values.put("roomsCurrent", "");
+        values.put("myInfoCurrent", "");
+        values.put("myReservationsCurrent", "current");
+        values.put("myRefundsCurrent", "");
+
+        HttpResponseUtil.sendTemplateWithHtml(
+                exchange,
+                "my-reservations.html",
+                values,
+                Map.of(
+                        "header",
+                        HttpResponseUtil.loadFragment(
+                                "app-header.html"
+                        ),
+                        "navigation",
+                        HttpResponseUtil.loadFragment(
+                                "nav-user.html"
+                        ),
+                        "footer",
+                        HttpResponseUtil.loadFragment(
+                                "app-footer.html"
+                        ),
+                        "reservationContent",
+                        content
+                )
+        );
     }
 
     /**

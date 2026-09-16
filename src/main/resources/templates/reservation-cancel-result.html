@@ -8,7 +8,7 @@
             content="width=device-width, initial-scale=1.0"
     >
 
-    <title>내 예약 조회 | 스터디룸 예약 관리</title>
+    <title>예약 취소 결과 | 스터디룸 예약 관리</title>
 
     <link
             rel="stylesheet"
@@ -28,22 +28,20 @@
             RESERVATION
         </p>
 
-        <h1>내 예약 조회</h1>
+        <h1>{{resultTitle}}</h1>
 
         <p>
-            본인이 신청한 예약의 목록과 상세 정보를 확인할 수 있습니다.
+            {{message}}
         </p>
     </section>
 
-    <!-- Issue #29 예약 조회 영역 시작 -->
-    {{reservationContent}}
-    <!-- Issue #29 예약 조회 영역 끝 -->
+    {{refundSection}}
 
-    <!-- Issue #30 예약 취소 영역 시작 -->
     <p>
-        예약을 취소하면 환불 요청이 함께 생성됩니다.
+        <a href="/my-reservations">
+            내 예약으로
+        </a>
     </p>
-    <!-- Issue #30 예약 취소 영역 끝 -->
 </main>
 
 {{footer}}

@@ -560,6 +560,15 @@ main > article > header p {
     text-align: left;
 }
 
+/* 게스트 헤더의 로그인·회원가입 링크 스타일 */
+.header-link {
+    text-decoration: none;
+}
+
+.header-link:hover {
+    text-decoration: underline;
+}
+
 /* 공통 상세 데이터 목록 */
 article dl {
     display: flex;

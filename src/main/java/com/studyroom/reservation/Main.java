@@ -46,6 +46,9 @@ public final class Main {
         AdminRefundDAO adminRefundDAO =
                 new AdminRefundDAO();
 
+        MemberReservationQueryDAO memberReservationQueryDAO =
+                new MemberReservationQueryDAO();
+
         StudyRoomService studyRoomService =
                 new StudyRoomService(
                         studyRoomDAO,
@@ -71,6 +74,21 @@ public final class Main {
                         memberRefundQueryDAO
                 );
 
+        ReservationCancelDAO reservationCancelDAO =
+                new ReservationCancelDAO();
+
+        MemberReservationQueryService memberReservationQueryService =
+                new MemberReservationQueryService(
+                        memberReservationQueryDAO
+                );
+
+        ReservationCancelService reservationCancelService =
+                new ReservationCancelService(
+                        authService,
+                        reservationCancelDAO
+                );
+
+
         AuthHandler authHandler =
                 new AuthHandler(authService);
 
@@ -94,7 +112,31 @@ public final class Main {
                 new ReservationCreateHandler(
                         authService,
                         studyRoomService,
-                        reservationCreateService
+                        reservationCreateService,
+                        userService
+                );
+
+        StudyRoomHandler studyRoomHandler =
+                new StudyRoomHandler(
+                        authService,
+                        studyRoomService,
+                        userService
+                );
+
+        ReservationQueryHandler reservationQueryHandler =
+                new ReservationQueryHandler(
+                        authService,
+                        studyRoomService,
+                        memberReservationQueryService,
+                        userService
+                );
+
+        ReservationCancelHandler reservationCancelHandler =
+                new ReservationCancelHandler(
+                        reservationCancelService,
+                        memberRefundQueryService,
+                        authService,
+                        userService
                 );
 
         AdminRefundService adminRefundService =
@@ -153,34 +195,14 @@ public final class Main {
                 reservationCreateHandler
         );
 
-        /*
-         * #24가 병합되기 전까지 사용하는 임시 스터디룸 화면 ~
-         */
-        server.createContext(
-                "/rooms",
-                exchange -> handleRooms(
-                        exchange,
-                        authService
-                )
-        );
-        // ~ 이상 #24가 병합되면 삭제
+         // 스터디룸
+        server.createContext("/rooms", studyRoomHandler);
+        server.createContext("/rooms/detail", studyRoomHandler);
+        server.createContext("/admin/rooms", studyRoomHandler);
 
-        /*
-         * 아래 라우터는 담당 GUI Issue가 main에 병합된 뒤 활성화합니다.
-         *
-         * // 스터디룸
-         * server.createContext("/rooms", studyRoomHandler);
-         * server.createContext("/admin/rooms", studyRoomHandler);
-         *
-         * // 예약 조회 및 취소
-         * server.createContext("/my-reservations", reservationQueryHandler);
-         * server.createContext("/reservations/cancel", reservationCancelHandler);
-         *
-         * // 환불 및 관리자 조회
-         * server.createContext("/my-refunds", refundHandler);
-         * server.createContext("/admin/reservations", refundHandler);
-         * server.createContext("/admin/refunds", refundHandler);
-         */
+        // 예약 조회 및 취소
+        server.createContext("/my-reservations", reservationQueryHandler);
+        server.createContext("/reservations/cancel", reservationCancelHandler);
 
         // 환불 및 관리자 조회
         server.createContext("/my-refunds", refundHandler);

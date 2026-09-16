@@ -8,7 +8,7 @@
             content="width=device-width, initial-scale=1.0"
     >
 
-    <title>예약 신청 | 스터디룸 예약 관리</title>
+    <title>스터디룸 상세 | 스터디룸 예약 관리</title>
 
     <link
             rel="stylesheet"
@@ -18,72 +18,9 @@
 
 <body class="app-body">
 
-<header class="app-header">
-    <div class="header-inner">
-        <a class="app-title" href="/home">
-            스터디룸 예약 관리
-        </a>
+{{header}}
 
-        <div class="login-info">
-            <span class="role-badge">
-                {{roleName}}
-            </span>
-
-            <form
-                    class="logout-form"
-                    action="/logout"
-                    method="post"
-            >
-                <button
-                        class="logout-button"
-                        type="submit"
-                >
-                    로그아웃
-                </button>
-            </form>
-        </div>
-    </div>
-</header>
-
-<nav class="app-nav" aria-label="주요 메뉴">
-    <ul class="nav-list">
-        <li>
-            <a class="nav-link" href="/home">
-                홈
-            </a>
-        </li>
-
-        <li>
-            <a
-                    class="nav-link current"
-                    href="/rooms"
-            >
-                스터디룸
-            </a>
-        </li>
-
-        <li>
-            <a class="nav-link" href="/my-info">
-                내 정보
-            </a>
-        </li>
-
-        <li>
-            <a
-                    class="nav-link"
-                    href="/my-reservations"
-            >
-                내 예약
-            </a>
-        </li>
-
-        <li>
-            <a class="nav-link" href="/my-refunds">
-                내 환불
-            </a>
-        </li>
-    </ul>
-</nav>
+{{navigation}}
 
 <main class="app-main">
     <section class="page-heading">
@@ -125,18 +62,14 @@
             </div>
         </dl>
 
-        <!-- 💡 [Issue #24 작업 영역] 비회원 / 관리자 전용 메뉴 -->
-        <menu style="display: {{nonUserMenuDisplay}};">
-            <li><a href="/rooms">목록으로</a></li>
-            <li><a href="/home">홈으로</a></li>
-            <li style="display: {{guestLinkDisplay}};"><a href="/login">로그인 안내</a></li>
-            <li style="display: {{adminLinkDisplay}};"><a href="/admin/rooms">수정 화면 이동</a></li>
+        <menu>
+            <li>
+                <a href="/rooms">
+                    목록으로
+                </a>
+            </li>
         </menu>
     </article>
-
-    <!-- ======================================================== -->
-    <!-- [Issue #25 작업 영역 시작] 예약 GUI 담당 영역 (덮어쓰기 금지) -->
-    <!-- ======================================================== -->
 
     <!-- 💡 1. 여기에 div 태그를 추가하여 예약 폼을 감싸줍니다. -->
     <div style="display: {{reservationSectionDisplay}};">
@@ -224,57 +157,7 @@
     </div> <!-- 💡 2. 폼이 끝나는 곳에서 div 태그를 닫아줍니다. -->
 </main>
 
-<footer class="app-footer">
-    <div class="footer-inner">
-        <section class="footer-section">
-            <strong>프로젝트</strong>
-
-            <div class="footer-links">
-                <a
-                        href="https://github.com/heebaek200/study_room_reservation"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                >
-                    GitHub 저장소
-                </a>
-
-                <a
-                        href="https://github.com/heebaek200/study_room_reservation/wiki"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                >
-                    Wiki 홈
-                </a>
-            </div>
-        </section>
-
-        <section class="footer-section">
-            <strong>구현 및 검증</strong>
-
-            <div class="footer-links">
-                <a
-                        href="https://github.com/heebaek200/study_room_reservation/issues/25"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                >
-                    예약 신청 GUI Issue
-                </a>
-
-                <a
-                        href="https://heebaek200.github.io/study_room_reservation/"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                >
-                    동시성 테스트 결과
-                </a>
-            </div>
-        </section>
-
-        <p class="footer-copy">
-            Study Room Reservation System
-        </p>
-    </div>
-</footer>
+{{footer}}
 
 </body>
 </html>
